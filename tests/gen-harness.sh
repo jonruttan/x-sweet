@@ -1,9 +1,9 @@
 #!/bin/sh
-# # x-sweet -- sweet-expressions for x-lang
+# # x-sweet -- the Sweet personality for x-lang
 #
 # ## tests/gen-harness.sh -- write tests/lib/harness.gen.x
 #
-# @description Generates the spec harness: the platform tower plus sweet,
+# @description Generates the spec harness: the platform tower plus Sweet,
 #   with no launcher.  Two absolute paths, both machine facts.
 # @author [Jon Ruttan](jonruttan@gmail.com)
 # @copyright 2026 Jon Ruttan
@@ -73,36 +73,17 @@ cat > "$OUT" <<EOF
 (import sweet/base)
 (set! %repl-print %sweet-repl-print)
 ; SHIM FOR THE RUNNER, not for the language.  Direct mode emits (heap-collect)
-; between snippets as its OOM guard, but that bare global was renamed to the
-; Heap class and the awk was never updated -- so the branch written for this
-; personality raises "Unbound SYMBOL heap-collect" on every snippet boundary.
-; Reported upstream; delete this line when the runner says (Heap collect).
+; between snippets as its OOM guard, but that bare global was renamed onto the
+; Heap class and the awk was never updated, so the branch written for this
+; personality raises on every snippet boundary.  x-lang#523; delete this line
+; when the runner says (Heap collect).
 (def heap-collect (fn (_) (Heap collect)))
-; ARMED LAST, and nothing may follow it but the loop.  Registering SWEET-WS
-; changes how the very next character of input is tokenized -- including the
-; rest of this file.  Every form above is ordinary x read by ordinary rules;
-; the spec text the runner appends after this is the first thing read as sweet.
+; ARMED LAST, AND NOTHING MULTI-LINE MAY FOLLOW.  Registering SWEET-WS changes
+; how the very next character is tokenized, including the rest of this file: a
+; multi-line form read after the arm has whitespace sentinels injected among
+; its elements, which is invisible in a body sequence and silently fatal in an
+; arity-sensitive form.  %sweet-run is defined in sweet/base.x for exactly that
+; reason -- defined before, called after.
 (%sweet-arm!)
-
-; THE LOOP LIVES HERE, IN THE HARNESS, because the runner is in direct mode
-; (REPL_CMD=" ").  Direct mode exists for exactly this personality -- the
-; platform's own awk says so: "Used by Sweet where indentation-based grouping
-; must see raw newlines/tokens."  It skips the %T harness AND the (begin ...)
-; wrapper the standard mode puts around every snippet, and the wrapper is the
-; part that matters: parentheses override indentation in SRFI-110, so
-;
-;   (begin define x
-;     42
-;   )
-;
-; is one flat call, not a definition with a child.  Wrapped, every indentation
-; spec in this bundle reads as something it does not mean.
-;
-; The cost of direct mode is that nothing supplies a read-eval-print loop, so
-; the harness must call one.  %sweet-run comes from sweet/base.x, DEFINED
-; before the arm and merely CALLED after it -- see the note there: a multi-line
-; form read after arming has whitespace sentinels injected into it, which is
-; silent and fatal in an arity-sensitive form like "if".  Nothing below this
-; line may span two lines.
 (%sweet-run)
 EOF

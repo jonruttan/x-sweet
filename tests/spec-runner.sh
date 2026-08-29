@@ -1,5 +1,5 @@
 #!/bin/sh
-# # x-sweet -- sweet-expressions for x-lang
+# # x-sweet -- the Sweet personality for x-lang
 #
 # ## tests/spec-runner.sh -- the bundle's runner
 #
@@ -32,24 +32,15 @@ command -v "$X" >/dev/null 2>&1 || {
 	exit 1
 }
 
-# ASKED FROM THE WRAPPER'S OWN DIRECTORY, and that is not a stylistic choice.
-# x.sh detects repo mode by testing for lib/x.x under the CWD, so --share-dir
-# answers with `pwd` in a checkout -- correct only when the caller already
-# stands in the x-lang repo, which a bundle by definition does not.  Asked
-# from anywhere else a checkout's wrapper reports
-#   Error: install root does not exist: .../x-lang/../share/x
-# and the flag whose own comment says it exists "so a tool outside this
-# repository can ASK instead of guessing" cannot be asked from outside.
-#
-# cd'ing to the wrapper's directory first makes the detection true for both
-# modes: a checkout's x.sh sits beside lib/x.x, and an installed x sits in
-# bin/ where lib/x.x is absent, so the install branch runs as designed.
-# Reported upstream; remove this dance once --share-dir answers from any cwd.
-_x_dir="$(cd "$(dirname "$(command -v "$X")")" && pwd)"
-X_ROOT="$(cd "$_x_dir" && "$X" --share-dir)"
+# --share-dir answers from ANY cwd as of x-lang 990c4a35.  It did not at first:
+# mode detection is cwd-based, so a checkout's x.sh asked from outside took the
+# installed branch and computed a share/x no checkout has.  This runner used to
+# cd to the wrapper's own directory before asking -- the guessing the flag
+# exists to end.  Reported, fixed upstream, dance removed.
+X_ROOT="$("$X" --share-dir)"
 # X_BIN is env-overridable, the way tests/x/spec-runner.sh makes it -- so the
 # same runner can drive a variant or patched engine without moving anything.
-X_BIN="${X_BIN:-$(cd "$_x_dir" && "$X" --engine-path)}"
+X_BIN="${X_BIN:-$("$X" --engine-path)}"
 
 # REQUIRED FROM AN INSTALLED TREE.  The runner finds its awk harness from the
 # directory holding the ENGINE -- true in a checkout, where the binary sits
@@ -67,24 +58,17 @@ LANG_LIB="$BUNDLE/tests/lib/harness.gen.x"
 # while diagnosing, without moving anything into the suite.
 SPEC_PATH="${SPEC_PATH:-$BUNDLE/tests/specs}"
 
-# READ ONE UNIT THE SWEET WAY.  The platform runner reads each spec's input
-# with `Io read` by default; for this bundle a "unit" is an indented block,
-# not an s-expression, so the whole point of the personality is in the reader.
-# READ_FN is the seam that makes that expressible -- it has been in
-# tests/spec-runner.awk since the format was written, and it is why a
-# personality with its own reader can share the platform's runner at all.
-#
-# The 2024 runner set READ_FN=%test-read, a helper that skipped whitespace
-# tokens and returned raw ones.  That exercised the curly layer and could not
-# have exercised the indentation layer at all -- with no grouping, `define x`
-# over an indented `42` is three separate reads.  sweet-read is the real entry.
+# READ ONE UNIT THE SWEET WAY.  A "unit" here is an indented block, not an
+# s-expression, so the whole point of the lang is in the reader.  READ_FN has
+# been in tests/spec-runner.awk since the format was written, and it is why a
+# lang with its own reader can share the platform's runner at all.
 READ_FN="sweet-read"; export READ_FN
 
-# DIRECT MODE.  The platform's runner wraps every snippet as `(begin ... )` in
-# its standard mode, and parentheses override indentation -- so the wrapper
-# silently flattens exactly what this bundle exists to test.  REPL_CMD=" "
-# selects the branch tests/spec-runner.awk added for this personality; the
-# harness supplies its own loop in exchange.  See tests/gen-harness.sh.
+# DIRECT MODE.  The standard mode wraps every snippet as `(begin ... )`, and
+# parentheses override indentation in SRFI-110 -- so the wrapper silently
+# flattens exactly what this suite tests.  REPL_CMD=" " selects the branch the
+# platform's awk added for this lang; the harness supplies its own loop in
+# exchange.  See tests/gen-harness.sh.
 REPL_CMD=" "; export REPL_CMD
 
 . "$X_ROOT/tests/spec-runner.sh"

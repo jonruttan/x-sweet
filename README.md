@@ -21,42 +21,31 @@ indented under another becomes its child. Nothing is rewritten at eval time.
 
 ## Status
 
-31 specs, all green against x-lang **0.5.2** / x-engine-c **v0.1.2**, and
+31 specs, all green against x-lang **v0.6.0** / x-engine-c **v0.1.2**, and
 still green on the engine carrying the
 [#528](https://github.com/jonruttan/x-lang/issues/528) fix.
 
-Second of the five 2024-era personalities to come back, after
+Second of the five 2024-era langs to come back, after
 [x-krn](../x-krn). It was chosen next because it is the one that stands on the
-*reader* seam rather than the vocabulary — the part of the personality contract
+*reader* seam rather than the vocabulary — the part of the lang contract
 with no coverage and, until this port, no evidence.
 
 ## Running it
 
-The spec suite needs nothing but an `x` it can find:
-
 ```bash
-X=/path/to/x-lang/x.sh sh tests/spec-runner.sh
+make test        # the spec suite
+make install     # into the x on PATH
 ```
 
-A prompt needs the same bridge x-krn does, for the same reason
-([x-lang#519](https://github.com/jonruttan/x-lang/issues/519)): `-l` has no
-personality-root step yet, so point the platform at this bundle —
-
-```bash
-ln -s "$PWD" /path/to/x-lang/apps/sweet
-```
-
-— and run from the x-lang repo root:
-
-```bash
-./x.sh -l sweet                    # interactive
-./x.sh -l sweet -f program.sweet   # batch
-```
+then `x -l sweet`. `make install` puts the bundle where `-l` looks — an installed
+x searches `<share>/langs/*/lang.xon`, so a lang is installed when its files
+are there. No registry, no per-project pin. Use `lang.pin.xon` and `Pin bundle`
+instead when it matters which version.
 
 ## Layout
 
 ```
-personality.xon     what this bundle is: name, dialect, release pairing
+lang.xon     what this bundle is: name, dialect, release pairing
 run.x               THE entry -- the only file that may know a path
 sweet/ws.x          the whitespace token both SRFIs stand on
 sweet/curly.x       SRFI-105
@@ -88,7 +77,7 @@ prefilter has no equivalent — you just omit it. `make-type` is
 
 **The R7RS dependency was a dependency on eight names.** `sweet-base.x` opened
 with `(include "lang/r7rs/lib/r7rs-base.x")`, which made the smallest
-personality of the five depend on the two largest — neither of them ported.
+lang of the five depend on the two largest — neither of them ported.
 What it actually needed was `define`, `lambda`, `begin`, `car`/`cdr`/`cons`,
 `else` and `equal?`. `sweet/scheme.x` is those, and is meant to be deleted:
 when x-r5rs lands as a bundle, it becomes `(import r5rs/base)`. A placeholder
@@ -135,7 +124,7 @@ whose slot 0 the collector traces as a pointer. Filed as
 `%set-first!`, which is traced, with small integers as immediates so the
 arithmetic still allocates nothing.
 
-## The rule this personality adds
+## The rule this lang adds
 
 **After `(%sweet-arm!)`, the stream may contain only single-line forms.**
 
@@ -157,7 +146,7 @@ merely called after it.
 ## Upstream notes
 
 Two beyond the [x-krn set](../x-krn/README.md#three-things-upstream-should-know),
-both in machinery that exists specifically for this personality:
+both in machinery that exists specifically for this lang:
 
 **The runner's direct mode has been dead since a rename**
 ([x-lang#523](https://github.com/jonruttan/x-lang/issues/523)).

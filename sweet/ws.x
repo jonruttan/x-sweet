@@ -50,9 +50,23 @@
 
 (provide sweet/ws
   %sweet-ws-register! %sweet-ws-reset! %sweet-column %sweet-strip-ws
-  %sweet-ws-mark %sweet-line-end! %sweet-line-ended?)
+  %sweet-ws-mark %sweet-line-end! %sweet-line-ended? %sweet-classify)
 
 (def %make-type (prim-ref (lit type) (lit make)))
+
+; #520: THE COLUMN ARITHMETIC IS SHARED NOW, and it arrived carrying a fix.
+; This file advanced the column by 8 on a tab.  SRFI-110 -- and CPython, and
+; every editor -- advance to the NEXT MULTIPLE of 8, which is a different number
+; the moment a tab is not the first thing on the line: for "<space><tab>x", +8
+; says 9 and a tab stop says 8.  This suite has no tab case, so nothing caught
+; it in either direction.  x/reader/indent is where that answer lives now, for
+; this bundle and for Logo and for anything after them.
+;
+; Fetched raw, never dispatched: this runs once per character inside a tokenizer
+; callback, where class dispatch would allocate mid-token.
+(import x/reader/indent)
+(def %sweet-advance (prim-ref (lit indent) (lit advance)))
+(def %sweet-classify (prim-ref (lit indent) (lit classify)))
 
 ; --- State -------------------------------------------------------------------
 ; Plain one-slot lists used as int cells.  Ordinary global bindings, so the
@@ -140,8 +154,8 @@
 ; interactive session blocks waiting for content the user has not typed.
 ;
 ; Spaces and tabs count only AFTER a newline: leading whitespace on the first
-; line of input is not indentation relative to anything.  A tab is 8, per
-; SRFI-110.  (apps/logo/indent.x answers this differently -- x-lang#520.)
+; line of input is not indentation relative to anything.  What a tab is worth is
+; no longer decided here -- see the tab-stop note at the top (#520, settled).
 ;
 ; Any other character ends the run, but only if a newline was seen.  A
 ; space-only run between two tokens on one line is not a grouping signal, so it
@@ -153,19 +167,19 @@
       (if (= (first %nl) 0)
         (%seq (%set-first! %nl 1) (%seq (%set-first! %lv 0) %ws-loop))
         (%seq (%set-first! %lv 0) (%score-set score 1 buffer)))
-      (if (= chr #\space)
+      ; Spaces and tabs are one branch now: which of them is worth what is
+      ; x/reader/indent's question, not this loop's.
+      (if (if (= chr #\space) #t (= chr #\tab))
         (%seq
-          (if (= (first %nl) 0) () (%set-first! %lv (+ (first %lv) 1)))
+          (if (= (first %nl) 0)
+            ()
+            (%set-first! %lv (%sweet-advance (first %lv) chr 8)))
           %ws-loop)
-        (if (= chr #\tab)
-          (%seq
-            (if (= (first %nl) 0) () (%set-first! %lv (+ (first %lv) 8)))
-            %ws-loop)
-          (if (if (= chr #\return) #t (if (= chr 11) #t (= chr 12)))
-            %ws-loop
-            (if (= (first %nl) 0)
-              ()
-              (%score-set score 1 buffer))))))))
+        (if (if (= chr #\return) #t (if (= chr 11) #t (= chr 12)))
+          %ws-loop
+          (if (= (first %nl) 0)
+            ()
+            (%score-set score 1 buffer))))))))
 
 ; State 1: the entry.  The first character must be whitespace or this is not
 ; our token at all.

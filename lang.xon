@@ -25,9 +25,14 @@
 ; those bytes still run against a platform that moved.  This row is the part
 ; that is checkable, and it is compared for EQUALITY, never parsed.
 ;
-; v0.6.0 is the first release carrying what this bundle needs: bundle
-; acquisition, `-l` loading, --share-dir answering from any cwd, and eval! in
-; the seam.  It is also what these specs are green against.
+; v0.7.0 is REQUIRED here, not merely paired with.  sweet/ws.x imports
+; x/reader/indent -- the shared indentation stack -- and it exists in no
+; earlier release: this bundle carried its own copy of that algorithm until
+; v0.7.0, and the two disagreed about what a tab is worth.  An older x-lang
+; does not run this bundle at all, rather than running it differently.
+;
+; v0.6.0 was the floor before that: bundle acquisition, `-l` loading,
+; --share-dir answering from any cwd, and eval! in the seam.
 
 (requires-release "v0.7.0")
 

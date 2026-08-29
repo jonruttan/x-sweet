@@ -29,6 +29,6 @@
 ; acquisition, `-l` loading, --share-dir answering from any cwd, and eval! in
 ; the seam.  It is also what these specs are green against.
 
-(requires-release "v0.6.0")
+(requires-release "v0.7.0")
 
 (entry "run.x")

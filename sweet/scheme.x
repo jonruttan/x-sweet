@@ -41,7 +41,12 @@
 ; vanish silently.  (base def-global) takes the global path unconditionally
 ; (x-lang#527).  Internal defines are not in this bundle's specs, so the
 ; body-position rewrite x-krn and x-r5rs need is not duplicated here.
-(def %sweet-def-global (prim-ref (lit base) (lit def-global)))
+; eval! evaluates with no env save/restore, so a `def` inside it persists in the
+; caller's world whatever the frame depth.  (An earlier draft used a proposed
+; (base def-global) primitive that engine v0.1.2 does not carry -- prim-ref
+; answers () for it, and every define then bound nothing, silently.)
+(def %sweet-def-global
+  (fn (_ n v) (eval! (list (lit def) n v))))
 (def define
   (op (name-or-form . body)
     e

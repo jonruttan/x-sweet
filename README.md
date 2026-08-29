@@ -21,7 +21,7 @@ indented under another becomes its child. Nothing is rewritten at eval time.
 
 ## Status
 
-31 specs, all green against x-lang **v0.6.0** / x-engine-c **v0.1.2**, and
+32 specs, all green against x-lang **v0.6.0** / x-engine-c **v0.1.2**, and
 still green on the engine carrying the
 [#528](https://github.com/jonruttan/x-lang/issues/528) fix.
 

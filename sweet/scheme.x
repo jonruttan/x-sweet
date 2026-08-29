@@ -45,8 +45,15 @@
 ; caller's world whatever the frame depth.  (An earlier draft used a proposed
 ; (base def-global) primitive that engine v0.1.2 does not carry -- prim-ref
 ; answers () for it, and every define then bound nothing, silently.)
+; THE VALUE IS QUOTED, and leaving it bare is a bug that hides for a long time.
+; (list (lit def) n v) builds (def name <value>) and eval! then EVALUATES it --
+; so the value is evaluated a second time.  Numbers, strings and procedures
+; self-evaluate and nothing looks wrong; a SYMBOL value gets looked up.
+;   (define %ellipsis-sym (string->symbol "..."))
+; therefore died with `Unbound SYMBOL '...'`, three files away from the cause.
+; Wrapping in (lit ...) makes def bind the value it was handed.
 (def %sweet-def-global
-  (fn (_ n v) (eval! (list (lit def) n v))))
+  (fn (_ n v) (eval! (list (lit def) n (list (lit lit) v)))))
 (def define
   (op (name-or-form . body)
     e

@@ -14,11 +14,26 @@
 ; cells, and this file reads them.  It never sees characters; the analyser
 ; never sees expressions.
 ;
-; This is one of two implementations of indentation grouping in the ecosystem;
-; apps/logo/indent.x is the other, reached by a different route (a token-list
-; pre-pass rather than the live stream) and disagreeing about tabs and blank
-; lines.  x-lang#520 tracks the case for a shared module -- worth doing with
-; both suites green, which is why it is not done here.
+; #520, SETTLED.  This was one of two implementations of indentation grouping in
+; the ecosystem, apps/logo/indent.x being the other, and they disagreed about
+; what a tab was worth and about what a dedent to an unopened column means.  The
+; measurement and the three rules are x/reader/indent's now; both are reached
+; through sweet/ws.x, which caches the raw refs.
+;
+; WHAT STAYS HERE, AND WHY IT IS NOT THE STACK.  Logo buffered a token list and
+; walked it with an explicit stack, so it drives (Indent feed ...) directly.
+; This reader runs on the LIVE stream and builds nested forms as it returns, so
+; its stack is the recursion -- `base` is the enclosing column, held in a frame
+; rather than in a list.  Rewriting that into an explicit stack would change the
+; shape of a file whose header documents an afternoon lost to a subtle bug, and
+; would buy nothing: what #520 asked for is that neither surface own the RULES,
+; and neither does.
+;
+; ONE DIVERGENCE IS LEFT, and it is a consequence of the recursion rather than a
+; policy this file sets.  A line dedenting to a column no enclosing level sits
+; at unwinds past every level rather than stopping at the nearest -- Indent's
+; `close` mode stops at the nearest, and `error` refuses.  Closing that means the
+; explicit stack, and it wants its own change with its own spec.
 
 (import sweet/ws)
 
@@ -53,7 +68,9 @@
         (def %child (sweet-read-expr lv))
         (if (null? %child)
           (%sweet-rev acc ())
-          (if (if (%sweet-line-ended?) (= (%sweet-column) lv) #f)
+          (if (if (%sweet-line-ended?)
+                (eq? (%sweet-classify (%sweet-column) lv) (lit same))
+                #f)
             (self (pair %child acc))
             (%sweet-rev (pair %child acc) ())))))
     (%go ())))
@@ -74,7 +91,8 @@
             ; and comment lines are transparent.
             (if (null? acc)
               (self acc)
-              (if (> (%sweet-column) base)
+              ; The rules come from x/reader/indent: deeper, same, shallower.
+              (if (eq? (%sweet-classify (%sweet-column) base) (lit deeper))
                 ; Deeper: those lines are this form's children.  The flag is
                 ; left to %sweet-siblings, whose last child sets it to whatever
                 ; ended the whole group -- that is what our own caller needs.

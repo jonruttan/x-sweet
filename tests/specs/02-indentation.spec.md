@@ -142,6 +142,24 @@ x
 ---
     7
 
+## indentation tabs
+
+### a tab-indented body is a child
+
+Until #520 this suite had no tab case at all, in either direction -- which is
+how `sweet/ws.x` came to advance the column by 8 on a tab where SRFI-110
+advances to the next multiple of 8, and nothing noticed. The arithmetic is
+asserted precisely in the platform's own `Indent advance` unit; this case is
+here so the surface itself has a tab in it.
+
+```scheme
+define x
+	42
+x
+```
+---
+    42
+
 ## indentation blank lines
 
 ### blank lines between expressions

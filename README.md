@@ -19,34 +19,155 @@ factorial 5
 Both notations are reader-level: `{a + b}` reads as `(+ a b)`, and a line
 indented under another becomes its child. Nothing is rewritten at eval time.
 
+x-sweet is a **lang**: a different surface language loaded over an x-lang
+dialect. Where x-lang and sweet spell something the same way, sweet is free to
+mean something different by it — and here that happens in the *reader* rather
+than the vocabulary, before anything is evaluated. The terms are in x-lang's
+[lang contract](https://github.com/jonruttan/x-lang/blob/main/docs/lang-contract.md).
+
 ## Status
 
-32 specs, all green against x-lang **v0.8.1** / x-engine-c **v0.1.2**, and
-still green on the engine carrying the
+**32 specs, all green** against x-lang **v0.8.1**, and green on every engine
+pin since the one carrying the
 [#528](https://github.com/jonruttan/x-lang/issues/528) fix.
 
+The floor beneath that pairing is x-lang v0.7.0: `sweet/ws.x` imports
+`x/reader/indent`, the shared indentation stack, which exists in no earlier
+release. This bundle carried its own copy of that algorithm until then, and the
+two disagreed about what a tab is worth.
+
 Second of the five 2024-era langs to come back, after
-[x-krn](../x-krn). It was chosen next because it is the one that stands on the
+[x-krn](https://github.com/jonruttan/x-krn). It was chosen next because it is the one that stands on the
 *reader* seam rather than the vocabulary — the part of the lang contract
 with no coverage and, until this port, no evidence.
+
+## Install
+
+Nothing cloned, from any directory:
+
+```bash
+x --install-lang https://github.com/jonruttan/x-sweet/releases/latest/download/lang.pin.xon
+x -l sweet
+```
+
+x fetches the published pin, then the tarball it names, verifies the digest,
+and installs to `<share>/langs/sweet` — where `x -l` looks. A failed upgrade
+leaves the working install untouched.
+
+From a clone, if you have one:
+
+```bash
+make install                      # into the x on your PATH
+PREFIX=$HOME/.local make install  # or a particular prefix
+```
+
+`make uninstall` removes it either way. An installed x searches
+`<share>/langs/*/lang.xon`, so a lang is installed when its files are there —
+no registry, no database.
+
+**One trap, and it is the one you will hit.** `x` decides where to look for
+langs from the directory you run it *in*. Inside an **x-lang checkout** it
+searches `deps/langs/` and an installed lang is invisible, however correctly it
+was installed:
+
+```
+$ cd path/to/x-lang && x -l sweet
+Error: no library, app or lang named 'sweet'
+  searched lib/sweet.x, apps/sweet/run.x
+      and deps/langs/*/lang.xon
+```
+
+Run it from anywhere else, or name the bundles explicitly — `X_LANG_DIR` wins
+in both modes:
+
+```bash
+X_LANG_DIR=$HOME/.local/share/x/langs/ x -l sweet   # the installed one
+X_LANG_DIR=/path/to/x-sweet/.. x -l sweet           # a checkout, uninstalled
+```
+
+
+## Pin it instead, for a project
+
+An install is unversioned and machine-wide. When it matters *which* version a
+project builds against, pin it: `Pin bundle` fetches the release tarball and
+verifies it against a digest before unpacking. In the project's
+`lang.pin.xon`:
+
+```x
+(lang "sweet")
+(release "v0.1.2")
+(bundle "sha256:…" "https://github.com/jonruttan/x-sweet/releases/download/v0.1.2/x-sweet-v0.1.2.tar.gz")
+(source "https://github.com/jonruttan/x-sweet.git")
+```
+
+Each release publishes its own digest, and the release notes carry this block
+ready to paste. Then:
+
+```x-repl
+> (import x/tool/pin)
+> (Pin bundle "deps/langs")
+"deps/langs/sweet-v0.1.2"
+```
+
+`deps/langs/` is where `x -l` looks in a checkout. `X_LANG_DIR` overrides it.
+
+**Which to use.** Install when you just want `x -l sweet` to work. Pin when a
+build depends on it — the digest is what makes the version reproducible, and
+an install has none.
 
 ## Running it
 
 ```bash
-make test        # the spec suite
-make install     # into the x on PATH
+x -l sweet                    # interactive
+x -l sweet -f program.sweet   # batch
 ```
 
-then `x -l sweet`. `make install` puts the bundle where `-l` looks — an installed
-x searches `<share>/langs/*/lang.xon`, so a lang is installed when its files
-are there. No registry, no per-project pin. Use `lang.pin.xon` and `Pin bundle`
-instead when it matters which version.
+x-lang boots the dialect `lang.xon` declares, arms this bundle's module root,
+and loads `run.x` on top — which is why nothing here needs to know a path.
+
+**Mind the arm.** Everything structural has to be defined *before*
+`(%sweet-arm!)` and merely called after it — see
+[the rule this lang adds](#the-rule-this-lang-adds), which is the one thing
+that will bite you silently.
+
+## Development
+
+Run the specs against any x-lang checkout or install:
+
+```bash
+X=/path/to/x-lang/x.sh make test   # the suite
+make bundle                        # roll a release tarball and print its pin
+```
+
+**Pass `X` explicitly.** Without it the suite takes the `x` on your PATH, and an
+installed x that trails the checkout reports failures the platform has already
+fixed.
+
+**Do not `make install` into an x-lang checkout.** The Makefile asks
+`$(X) --share-dir` where to put the bundle, and a checkout answers with its own
+root — so the files land in `<checkout>/langs/NAME`, which is not one of the
+three paths `-l` searches there. It reports success and the lang stays
+invisible. Install into a real `<share>` tree, or use `X_LANG_DIR`.
+
+
+This suite runs in the runner's **direct mode**, and it is the only bundle that
+does: the standard mode wraps each snippet in `(begin …)`, and parentheses
+override indentation, so SRFI-110 cannot be tested through it.
+`tests/gen-harness.sh` writes the generated harness that shims it — see
+[Upstream notes](#upstream-notes).
+
+The release tarball is byte-reproducible: it is built from the tag with
+`git archive` and a timestamp-free gzip, so two people rolling one tag get one
+digest. Pushing a `v*` tag runs the suite and, only if it is green, publishes
+the tarball, its `.sha256` and `lang.pin.xon` as a GitHub release. CI runs the
+declared release *and* x-lang `main`, so a platform that moves underneath this
+bundle shows up as a red build rather than a surprise later.
 
 ## Layout
 
 ```
 lang.xon     what this bundle is: name, dialect, release pairing
-run.x               THE entry -- the only file that may know a path
+run.x               the entry -- and it knows no paths at all
 sweet/ws.x          the whitespace token both SRFIs stand on
 sweet/curly.x       SRFI-105
 sweet/indent.x      SRFI-110
@@ -145,8 +266,7 @@ merely called after it.
 
 ## Upstream notes
 
-Two beyond the [x-krn set](../x-krn/README.md#three-things-upstream-should-know),
-both in machinery that exists specifically for this lang:
+Two of them, both in machinery that exists specifically for this lang:
 
 **The runner's direct mode has been dead since a rename**
 ([x-lang#523](https://github.com/jonruttan/x-lang/issues/523)).

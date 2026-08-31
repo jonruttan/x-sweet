@@ -37,8 +37,18 @@
 ; below is one line each, deliberately.
 ;
 ; THE LOOP IS OURS, not the launcher's: a sweet "unit" is an indented block,
-; not an s-expression, so %sweet-run reads with sweet-read.  x.sh appends its
-; own launcher only when this file does not end in one.
+; not an s-expression, so %sweet-run reads with sweet-read.
+;
+; NO BANNER HERE, and the line that used to be here is worth a note because it
+; was dead for its whole life.  x.sh appends lib/x/repl/launch.x after this
+; file when no -f was given, and launch.x opens with (%banner) -- so the
+; greeting has always come from there.  This file's own (unless %batch?
+; (%banner)) never fired, because the wrapper passed --batch unconditionally
+; for a bundle and %batch? was therefore always true.
+;
+; x-lang made %batch? honest (it means "a file was supplied" again, for
+; bundles as well as dialects), which turned the dead line live and printed
+; the banner twice.  Deleting it is the fix rather than guarding it harder:
+; there is one launcher and it already greets.
 (%sweet-arm!)
-(unless %batch? (%banner))
 (%sweet-run)

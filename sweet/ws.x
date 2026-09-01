@@ -50,7 +50,8 @@
 
 (provide sweet/ws
   %sweet-ws-register! %sweet-ws-reset! %sweet-column %sweet-strip-ws
-  %sweet-ws-mark %sweet-line-end! %sweet-line-ended? %sweet-classify)
+  %sweet-ws-mark %sweet-line-end! %sweet-line-ended? %sweet-classify
+  %sweet-sus %sweet-suspend! %sweet-resume!)
 
 (def %make-type (prim-ref (lit type) (lit make)))
 
@@ -79,6 +80,30 @@
 ; Whether the last sweet-read-expr STOPPED at a line end rather than at EOF.
 ; Written by the grouping layer, never by the reader -- see below.
 (def %wsf (list 0))
+; SUSPENSION DEPTH, for the include path.  Registered types fire on EVERY
+; buffer, and `include` (which `import` and include-once funnel through) hands
+; the C loader a PLAIN-X file: it reads and evaluates forms itself, so nothing
+; on that path runs %sweet-strip-ws.  A multi-line (def name\n  (fn ...)) in an
+; included module then reads as (def name <mark> (fn ...)) and binds NAME TO
+; THE SENTINEL -- observed live 2026-09-01, when (import x/tool/profile) bound
+; %prof-kv to " sweet-ws" and evaluating the mangled body segfaulted the
+; engine.  While this cell is nonzero both sweet analysers reject at entry, the
+; platform's own types take every token, and the included file reads exactly as
+; it would with sweet never armed.  A DEPTH, not a flag: includes nest.
+; Exported as a cell, not a predicate: the analysers pay one slot read per
+; character, never a closure call.  base.x wraps `include` with the pair below.
+(def %sweet-sus (list 0))
+(def %sweet-suspend!
+  (fn (_) (%set-first! %sweet-sus (+ (first %sweet-sus) 1)) ()))
+; Popping past zero is a no-op, mirroring module.x's include-dir stack: an
+; underflow is a wrapper bug and should read as nothing happening, not as the
+; reader dying while a form is still on the wire.
+(def %sweet-resume!
+  (fn (_)
+    (if (< 0 (first %sweet-sus))
+      (%set-first! %sweet-sus (- (first %sweet-sus) 1))
+      ())
+    ()))
 
 (def %sweet-ws-reset!
   (fn (_)
@@ -182,20 +207,25 @@
             (%score-set score 1 buffer))))))))
 
 ; State 1: the entry.  The first character must be whitespace or this is not
-; our token at all.
+; our token at all.  Suspended (an include is loading a plain-x file), it
+; rejects unconditionally and the platform's whitespace type takes the run;
+; only the entry needs the check, because suspension can only change between
+; tokens -- include runs during eval, never mid-tokenize.
 (def %ws-analyse
   (fn (_ buffer score chr)
-    (if (if (= chr #\space) #t
-          (if (= chr #\tab) #t
-            (if (= chr #\newline) #t
-              (if (= chr #\return) #t
-                (if (= chr 11) #t (= chr 12))))))
-      (%seq
-        (if (= chr #\newline)
-          (%seq (%set-first! %nl 1) (%set-first! %lv 0))
-          (%set-first! %nl 0))
-        %ws-loop)
-      ())))
+    (if (< 0 (first %sweet-sus))
+      ()
+      (if (if (= chr #\space) #t
+            (if (= chr #\tab) #t
+              (if (= chr #\newline) #t
+                (if (= chr #\return) #t
+                  (if (= chr 11) #t (= chr 12))))))
+        (%seq
+          (if (= chr #\newline)
+            (%seq (%set-first! %nl 1) (%set-first! %lv 0))
+            (%set-first! %nl 0))
+          %ws-loop)
+        ()))))
 
 ; SCORED INCLUSIVE, AND THAT IS WHAT WINS THE TIE.  %score-set scores the
 ; buffer as it stands; the platform's whitespace type unreads first and so

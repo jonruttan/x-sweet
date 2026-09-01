@@ -27,7 +27,7 @@ than the vocabulary, before anything is evaluated. The terms are in x-lang's
 
 ## Status
 
-**32 specs, all green** against x-lang **v0.8.1**, and green on every engine
+**32 specs, all green** against x-lang **v0.9.0**, and green on every engine
 pin since the one carrying the
 [#528](https://github.com/jonruttan/x-lang/issues/528) fix.
 

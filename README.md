@@ -27,7 +27,7 @@ than the vocabulary, before anything is evaluated. The terms are in x-lang's
 
 ## Status
 
-**32 specs, all green** against x-lang **v0.9.0**, and green on every engine
+**34 specs, all green** against x-lang **v0.9.0**, and green on every engine
 pin since the one carrying the
 [#528](https://github.com/jonruttan/x-lang/issues/528) fix.
 
@@ -173,7 +173,7 @@ sweet/curly.x       SRFI-105
 sweet/indent.x      SRFI-110
 sweet/printer.x     Scheme's `write`, which is not x's
 sweet/scheme.x      the eight Scheme names the specs use -- a placeholder
-sweet/base.x        assembles the parts, and holds the loop
+sweet/base.x        assembles the parts, holds the loop and the include seam
 ```
 
 ## What porting it actually cost
@@ -263,6 +263,39 @@ which takes the wrong branch and prints nothing at all. No error, no output, a
 suite that fails every test with an empty result. Everything structural —
 including the read-eval-print loop — is therefore defined *before* the arm and
 merely called after it.
+
+### The include seam
+
+The rule above governs the stream. Module loads were the same hazard from the
+other side, and for a while they were a real hole: `include` — and `import`,
+which funnels through it — hands the C loader a **plain-x** file, and the
+loader reads and evaluates forms itself, with no `sweet-read` and no stripper
+anywhere on the path. With the reader armed, every multi-line form in an
+imported module picked up sentinels, so
+
+```scheme
+(def name
+  (fn ...))          ; read as (def name <mark> (fn ...))
+```
+
+bound `name` to the sentinel string, and evaluating the mangled remainder
+segfaulted the engine. Single-line defs in the same file read fine, which made
+it look like anything but the reader.
+
+So `sweet/base.x` fronts the `include` *binding* with a suspend/resume pair:
+`sweet/ws.x` carries a suspension depth (`%sweet-sus`), both sweet types
+reject at entry while it is up, and an included file reads exactly as it would
+with sweet never armed. One seam covers every module load — `import`,
+`include-once` and `import-version` all pass through the same `set!`-mutable
+slot, the same mechanism the platform's own relative-path wrapper uses — and
+the wrapper re-raises through a `guard` after resuming, so an error mid-load
+cannot leave the reader suspended. The gate is one slot read per character;
+the depth (not a flag) is what makes nested includes balance.
+
+The `-f` program and the launcher never pass through the seam: `x.sh` cats
+both onto stdin, where `sweet-read` strips. `tests/specs/03-include.spec.md`
+holds both halves — an imported multi-line module binds real values, and the
+notations still group once the load returns.
 
 ## Upstream notes
 

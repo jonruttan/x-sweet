@@ -38,6 +38,46 @@
     (%sweet-ws-reset!)
     ()))
 
+; --- The include seam --------------------------------------------------------
+; INCLUDED FILES ARE PLAIN X, AND THE READER MUST KNOW IT.  Once armed, the
+; sweet types fire on every buffer -- including the module files `include`
+; hands to the C loader, which reads and evaluates forms itself: no
+; sweet-read, no %sweet-strip-ws, nobody to clean up.  A top-level sentinel
+; there is inert (self-evaluating, same as the stream case above), but one
+; INSIDE a multi-line form is not: (import x/tool/profile) read
+; (def %prof-kv\n  (fn ...)) as (def %prof-kv <mark> (fn ...)), bound the name
+; to the sentinel string, and evaluating the mangled neighbors segfaulted the
+; engine (2026-09-01).  Single-line defs in the same file read fine, which is
+; what made it look like anything but the reader.
+;
+; So: front `include` with a wrapper that suspends both sweet types for the
+; duration of the load.  `import`, include-once and import-version all funnel
+; through the `include` BINDING (see lib/x/boot/module.x -- set! mutates the
+; slot every resolution path reads, which is also why set! and not def), so
+; one seam covers every module load.  The -f program and the launcher never
+; pass through here: x.sh cats both onto stdin, where sweet-read strips.
+;
+; ONCE, GUARDED THE WAY module.x GUARDS ITS OWN WRAPPER: a second capture
+; would make %sweet-include-raw the wrapper itself, and include would then
+; recurse forever -- module.x:160 documents that exact segfault.  The flag is
+; an x-side catalog value, which the ISA manifest check deliberately ignores.
+;
+; The guard re-raises: an error mid-load must still reach the session's
+; handler, but with the depth restored first -- a permanently suspended
+; reader turns every later multi-line entry into an EOF-length read.
+(if (null? (prim-ref (lit module) (lit sweet-include-wrapped)))
+  (do
+    (prim-reg! (lit module) (lit sweet-include-wrapped) (pair () ()))
+    (def %sweet-include-raw include)
+    (set! include
+      (fn (_ path)
+        (%sweet-suspend!)
+        (guard (err (%sweet-resume!) (error err))
+          (def %sweet-include-result (%sweet-include-raw path))
+          (%sweet-resume!)
+          %sweet-include-result))))
+  ())
+
 ; SCHEME'S `write`, INSTALLED.  sweet/printer.x explains why a personality
 ; rebinds it; here is the one line that makes it the surface's meaning.  Done
 ; at load, not at arm time: it is a vocabulary decision, not a reader one.

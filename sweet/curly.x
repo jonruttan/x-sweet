@@ -126,18 +126,25 @@
                     (pair (if (pair? %e) (%sweet-strip-ws %e) %e) acc)))))))
         (%go ())))))
 
+; Both hooks reject while %sweet-sus is up -- an include is loading a PLAIN-X
+; file, where a brace is not notation.  One slot read per character, same
+; discipline as the gate in sweet/ws.x, which also owns the why.
 (def %curly-analyse
   (fn (_ buffer score chr)
-    (if (if (= chr #\{) #t (= chr #\}))
-      (%score-set score 1 buffer)
-      ())))
+    (if (< 0 (first %sweet-sus))
+      ()
+      (if (if (= chr #\{) #t (= chr #\}))
+        (%score-set score 1 buffer)
+        ()))))
 
 ; { and } terminate an adjacent token, so a{b} reads as a then {b}.
 (def %curly-delimit
   (fn (_ buffer . rest)
-    (if (if (= (%buf-last-char buffer) #\{) #t (= (%buf-last-char buffer) #\}))
-      (%seq (%buffer-unread buffer) buffer)
-      ())))
+    (if (< 0 (first %sweet-sus))
+      ()
+      (if (if (= (%buf-last-char buffer) #\{) #t (= (%buf-last-char buffer) #\}))
+        (%seq (%buffer-unread buffer) buffer)
+        ()))))
 
 ; Registration is a VERB, not a load side effect.  base.x decides when the
 ; reader arms, so loading this module in a harness that only wants

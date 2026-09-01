@@ -2,7 +2,7 @@
 
 [SRFI-105](https://srfi.schemers.org/srfi-105/) curly infix and
 [SRFI-110](https://srfi.schemers.org/srfi-110/) indentation grouping, as a
-reader riding on x-lang.
+reader riding on [x-lang](https://github.com/jonruttan/x-lang).
 
 ```
 $ x -l sweet
@@ -282,6 +282,21 @@ every snippet boundary. `tests/gen-harness.sh` shims it.
 all**, and neither is in the contract's seam table — the same gap as
 `%repl-print` and `%repl-read`
 ([x-lang#518](https://github.com/jonruttan/x-lang/issues/518)).
+
+## Background
+
+Sweet-expressions come from David A. Wheeler's *Readable Lisp S-expressions
+Project*: the claim that Lisp can keep homoiconicity while losing the
+parentheses people bounce off. The discipline that makes it more than
+syntax-flavouring is that every notation is a strict generalization of
+s-expressions — any ordinary s-expression is still read unchanged, and the new
+forms only add meaning where none existed. Both notations were standardized as
+Scheme SRFIs by Wheeler and Alan Manuel K. Gloria: curly infix in 2012,
+indentation grouping in 2013.
+
+- [Readable Lisp S-expressions Project](https://readable.sourceforge.io/) — rationale, tutorials, history
+- [SRFI-105](https://srfi.schemers.org/srfi-105/) — curly-infix-expressions (2012)
+- [SRFI-110](https://srfi.schemers.org/srfi-110/) — sweet-expressions (2013)
 
 ## Licence
 

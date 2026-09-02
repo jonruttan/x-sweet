@@ -23,7 +23,57 @@
 (provide sweet/base sweet-read sweet-version %sweet-arm! %sweet-repl-print
   %sweet-run)
 
-(def sweet-version "0.1.0")
+; --- The version -------------------------------------------------------------
+; THE STAMP IS THE VERSION, and the literal that used to sit here was a lie in
+; waiting: it said "0.1.0" through three releases, because nothing a commit
+; carries can know which tag will land on it -- the argument lang.xon's own
+; header makes against a version row.  What CAN know are the two paths a
+; released tree takes: `make install` writes <bundle>/version from git
+; describe, and tools/bundle.sh stamps the same file into the tarball from
+; the tag.  x.sh emits %lang-root -- where the bundle sits -- ahead of the
+; entry, so the stamp is one kernel read away, taken the way boot code reads
+; files: the raw syscall shape module.x's versioned-import scan uses.  No
+; class layer, no dialect assumptions, and the prims are BODY defs -- this
+; runs once at load, so the defs-at-depth cost is nothing and the
+; percent-global budget stays where it was.
+;
+; "dev" ON EVERY MISS, deliberately: %lang-root unbound (the spec harness
+; imports sweet/base directly; a session booted by x.sh always has it), no
+; stamp beside the bundle (a checkout -- absence says checkout, the same
+; ruling x.sh's bundle_version_of follows), or a read that fails outright.
+; It is the word the Makefile's own fallback writes.  The stamp's leading
+; "v" is stripped because the banner composes " v{%lang-version}": the file
+; says "v0.1.4", the banner seat needs "0.1.4".
+(def %sweet-stamp-version
+  (fn (_)
+    (import x/platform/syscall)
+    (def %sa (prim-ref (lit str) (lit append)))
+    (def %mk (prim-ref (lit str) (lit make)))
+    (def %br (prim-ref (lit str) (lit byte-ref)))
+    (def %bs (prim-ref (lit str) (lit byte-sub)))
+    (def %ci (prim-ref (lit char) (lit ->int)))
+    ; O_RDONLY is 0 in both of x/platform/syscall's flag tables; the perm
+    ; seat is ignored without O_CREAT and stays 420 so the call keeps the
+    ; uniform 3-arg shape module.x and sys/file.x use.
+    (def %fd (syscall (syscall-id (lit open)) (%sa %lang-root "/version") 0 420))
+    (if (< %fd 0)
+      "dev"
+      (do
+        (def %buf (%mk 64))
+        (def %n (syscall (syscall-id (lit read)) %fd %buf 63))
+        (syscall (syscall-id (lit close)) %fd)
+        (if (< %n 1)
+          "dev"
+          (do
+            ; One line is the contract (both writers printf '%s\n'); tolerate
+            ; its absence.  Bytes compared as ints: byte-ref answers a char,
+            ; and hex.x is the precedent for going through char->int.
+            (def %end
+              (if (= (%ci (%br %buf (- %n 1))) 10) (- %n 1) %n))
+            (if (if (< 0 %end) (= (%ci (%br %buf 0)) 118) #f)
+              (%bs %buf 1 (- %end 1))
+              (%bs %buf 0 %end))))))))
+(def sweet-version (guard (err "dev") (%sweet-stamp-version)))
 
 ; ARMING IS A VERB.  Registering a reader type changes how every subsequent
 ; character of input is tokenized, including the rest of the file doing the

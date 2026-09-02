@@ -1,5 +1,7 @@
 # x-sweet — sweet-expressions on x-lang
 
+<p align="center"><img src="docs/bitwise-banner.svg" alt="x-sweet, with Bitwise the owl" width="100%"></p>
+
 [SRFI-105](https://srfi.schemers.org/srfi-105/) curly infix and
 [SRFI-110](https://srfi.schemers.org/srfi-110/) indentation grouping, as a
 reader riding on [x-lang](https://github.com/jonruttan/x-lang).
@@ -334,3 +336,5 @@ indentation grouping in 2013.
 ## Licence
 
 MIT No Attribution (MIT-0). See [LICENSE](LICENSE).
+
+<p align="center"><img src="docs/bitwise-mark.svg" alt="Bitwise" width="96"></p>

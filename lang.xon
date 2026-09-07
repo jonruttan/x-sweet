@@ -34,6 +34,6 @@
 ; v0.6.0 was the floor before that: bundle acquisition, `-l` loading,
 ; --share-dir answering from any cwd, and eval! in the seam.
 
-(requires-release "v0.10.0")
+(requires-release "v0.13.0")
 
 (entry "run.x")

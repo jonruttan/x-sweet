@@ -47,6 +47,8 @@ install: ## Install into <share>/langs/sweet
 	cp -R $(PAYLOAD) "$(DEST)/"
 	printf '%s\n' '$(LANG_VERSION)' > "$(DEST)/version"
 	@echo "x-sweet: installed to $(DEST)"
+	@echo "x-sweet: writing the boot image"
+	"$(X)" --image -l sweet || true
 	@echo "x-sweet: try  x -l sweet"
 
 .PHONY: uninstall

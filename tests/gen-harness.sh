@@ -84,6 +84,18 @@ cat > "$OUT" <<EOF
 ; its elements, which is invisible in a body sequence and silently fatal in an
 ; arity-sensitive form.  %sweet-run is defined in sweet/base.x for exactly that
 ; reason -- defined before, called after.
-(%sweet-arm!)
-(%sweet-run)
+; THROUGH `repl`, SO A STATE IMAGE OF THIS HARNESS CAN START IT AGAIN.  The
+; suite's image boot replaces this file with the loader and re-runs the one
+; launcher the platform knows -- (repl) -- so a harness that called its own
+; loop directly loaded fine and then read the batch with the ORDINARY reader:
+; every curly form answered nothing, which is the empty-result failure the
+; note in sweet/base.x warns about.  Replacing `repl` is what x-ash learned to
+; do for the same reason; the arm stays inside it, still the last thing that
+; happens before the stream is read.
+(set! repl (fn (_) (%seq (%sweet-arm!) (%sweet-run))))
+;  NOT WHILE THE IMAGE IS BEING WRITTEN.  The writer loads this harness in a
+; child whose stdin is the writer's own script, and %sweet-run would read that
+; script as sweet source.  %image-writing is bound in that child alone, so the
+; read is guarded; a normal boot raises Unbound and answers #f.
+(if (guard (_ #f) %image-writing) () (repl))
 EOF

@@ -8,45 +8,25 @@
 ; @copyright 2026 Jon Ruttan
 ; @license MIT No Attribution (MIT-0)
 ;
-; WHY THIS IS ITS OWN MODULE.  Curly-infix (SRFI-105) and indentation grouping
-; (SRFI-110) are independent notations, and neither implies the other.  But
-; both have to cope with the same fact: once a whitespace type is registered,
-; it fires EVERYWHERE, including inside `(...)` and `{...}`, and whatever its
-; reader returns lands in the list being built.
+; Curly-infix (SRFI-105) and indentation grouping (SRFI-110) are independent
+; notations, and both need this token, so it lives in its own module.
 ;
-; THE SENTINEL IS THE FIX, AND THE 2024 CHOICE OF IT WAS THE BUG.  That reader
-; returned #t, with the note "self-evaluating, so the C eval loop handles it
-; harmlessly between top-level forms".  Harmless there; not harmless inside a
-; list, where it is indistinguishable from a #t the program wrote:
+; Constraints on anything changed here:
 ;
-;   (lit (a          reads as    ('a #t 'b)
-;     b))
+; - Once the type is registered it fires everywhere, including inside `(...)`
+;   and `{...}`, and whatever its reader returns lands in the list being built.
+;   The reader returns %sweet-ws-mark; %sweet-strip-ws removes it. The mark is
+;   a string compared with `eq?` -- by identity -- so no value a program can
+;   write collides with it.
 ;
-; and the bundle's own spec `if #t` / indented `42` is a live case of a real #t
-; in the same position.  The 2024 file already carried a %ws-mark sentinel and
-; a strip-ws that removed it -- but nothing ever returned %ws-mark, so the
-; stripper had no work to do and the #t stayed.
+; - The analyser runs per character inside a tokenizer callback, where a
+;   collection mid-token is a hazard. Nested `if` only: no `cond`, no `let`.
 ;
-; So: return the sentinel, and strip THAT.  A fresh pair, compared by identity,
-; can never collide with a value a program can write -- the discipline
-; lib/x/repl/loop.x uses for its own cancel marker.
-;
-; ALLOCATION IS THE CONSTRAINT.  The analyser runs per character inside a
-; tokenizer callback, where a collection mid-token is a hazard -- the 2024 file
-; avoided `cond` there for exactly this reason.  Nested `if` only, and no `let`.
-;
-; THE COUNTERS ARE ORDINARY SLOTS, NOT INT CELLS, and that is a correction.
-; The obvious modern spelling of the 2024 atom-val / atom-set! / atom-add!
-; helpers is %cell-int / %set-cell-int!, which read and write a RAW MACHINE
-; WORD in an object's first data slot.  Applied to a (list 0) that silently
-; corrupts the heap: slot 0 of a pair holds an object POINTER, so the next
-; mark phase traces the integer as an address and the process dies with no
-; diagnostic.  Three lines reproduce it, and x-lang#522 has them.
-;
-; Every one of the platform's own callers applies those two to C-created
-; cells.  A pair written with %set-first! is traced correctly, small integers
-; are immediates so the arithmetic below allocates nothing, and the whole
-; hazard evaporates.
+; - The counters are ordinary slots written with %set-first!. Do not switch
+;   them to %cell-int / %set-cell-int!: those write a raw machine word into
+;   slot 0, which the collector traces as a pointer on a pair, corrupting the
+;   heap (x-lang#522). Small integers are immediates, so the arithmetic below
+;   allocates nothing either way.
 
 (provide sweet/ws
   %sweet-ws-register! %sweet-ws-reset! %sweet-column %sweet-strip-ws
@@ -192,8 +172,7 @@
       (if (= (first %nl) 0)
         (%seq (%set-first! %nl 1) (%seq (%set-first! %lv 0) %ws-loop))
         (%seq (%set-first! %lv 0) (%score-set score 1 buffer)))
-      ; Spaces and tabs are one branch now: which of them is worth what is
-      ; x/reader/indent's question, not this loop's.
+      ; Space and tab share a branch; %sweet-advance applies the column width.
       (if (if (= chr #\space) #t (= chr #\tab))
         (%seq
           (if (= (first %nl) 0)

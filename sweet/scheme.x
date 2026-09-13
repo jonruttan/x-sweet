@@ -2,29 +2,16 @@
 ;
 ; ## sweet/scheme.x -- the Scheme names the notation is written in
 ;
+; @description The eight Scheme bindings this bundle's specs use: define,
+;   lambda, begin, car, cdr, cons, else, equal?. Each is a thin wrapper over
+;   an x form.
 ; @author [Jon Ruttan](jonruttan@gmail.com)
 ; @copyright 2026 Jon Ruttan
 ; @license MIT No Attribution (MIT-0)
 ;
-; A PLACEHOLDER, AND SAYING SO IS THE POINT.  SRFI-105 and SRFI-110 are
-; Scheme SRFIs, and this bundle's specs are written in Scheme -- `define`,
-; `lambda`, `null?`.  The 2024 tree got those by opening with
-;
-;   (include "lang/r7rs/lib/r7rs-base.x")
-;
-; which made the smallest personality depend on the two largest, neither of
-; which is ported.  That is a real dependency, but it is a dependency on the
-; *alias layer*, not on R7RS: nothing in sweet-expressions needs `dynamic-wind`
-; or a numeric tower.  The specs need eight names.
-;
-; So this file is those eight, and it is meant to be DELETED.  When x-r5rs
-; lands as a bundle, personality.xon grows a dependency on it and this file
-; becomes `(import r5rs/base)`.  Until then, a placeholder that is honest
-; about being one beats a blocked port -- and beats quietly rewriting the
-; specs into x, which would have changed what the suite tests.
-;
-; Everything here is a thin operative over an x form.  None of it is a
-; contribution to what Scheme means; x-r5rs is the arbiter of that.
+; Placeholder. When x-r5rs lands as a bundle, lang.xon takes a dependency on
+; it and this file becomes `(import r5rs/base)`. Nothing here defines what
+; Scheme means; x-r5rs is the arbiter of that.
 
 (provide sweet/scheme define lambda begin)
 

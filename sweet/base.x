@@ -8,11 +8,9 @@
 ; @copyright 2026 Jon Ruttan
 ; @license MIT No Attribution (MIT-0)
 ;
-; No path literals and no dialect boot here: run.x owns both.  The 2024
-; sweet-base.x ended with a bare (sweet-repl) call, so merely LOADING the
-; language started a session -- which is why its own spec harness could not
-; load it without one, and why the file could never be imported by anything
-; else.  A launcher is an entry's job.
+; No path literals and no dialect boot here: run.x owns both. This file must
+; not start a session either -- launching is the entry's job, and a bare
+; (sweet-repl) call here would make merely importing the language open one.
 
 (import sweet/printer)
 (import sweet/scheme)

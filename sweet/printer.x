@@ -1,27 +1,18 @@
 ; # x-sweet -- sweet-expressions for x-lang
 ;
-; ## sweet/printer.x -- Scheme's `write`, which is not x's
+; ## sweet/printer.x -- Scheme-style `write`
 ;
+; @description Renders symbols bare and strings quoted, as Scheme's `write`
+;   does. Rebinds `write`; the same writer backs %repl-print.
 ; @author [Jon Ruttan](jonruttan@gmail.com)
 ; @copyright 2026 Jon Ruttan
 ; @license MIT No Attribution (MIT-0)
 ;
 ; x's `write` is round-trippable: a symbol renders with the quote its reader
-; needs to give it back, so (list 'b 'c) writes as ('b 'c).  That is right for
-; x, and blessed in docs/spec.md -- "(my-quote (+ 1 2)) -> ('+ 1 2)".
-;
-; Scheme's `write` renders symbols bare and strings quoted: (b c) and "hello".
-; This bundle's own spec asserts it directly --
+; needs to give it back, so (list 'b 'c) writes as ('b 'c). Scheme's renders
+; (b c). The difference is asserted by this bundle's specs, e.g.
 ;
 ;     (write {1 + 2 * 3})   ->   ($nfx$ 1 + 2 * 3)
-;
-; -- so the difference is not cosmetic here, it is the assertion.
-;
-; Re-meaning a shared spelling is what a personality is FOR; the contract says
-; so in as many words.  So `write` is rebound rather than the spec rewritten,
-; and the same writer backs %repl-print.  (x-krn/krn/printer.x reaches the same
-; conclusion from the same evidence -- worth noticing that two independent
-; ports of two unrelated languages both needed this in their first hour.)
 
 (provide sweet/printer %sweet-write %sweet-repl-print)
 

@@ -8,27 +8,13 @@
 ; @copyright 2026 Jon Ruttan
 ; @license MIT No Attribution (MIT-0)
 ;
-; THIS IS A READER TYPE, and the 2024 version of it is the clearest single
-; case of what changed underneath these personalities.  It used to be:
+; A reader type, registered with (prim-ref 'type 'make). There is no
+; leading-character prefilter: the tokenizer iterates every registered type and
+; scores its `analyse` hook, which returns further closures to advance the
+; state machine. lib/x/num/float.x is a worked example of the same shape.
 ;
-;   (make-type "SWEET-CURLY"
-;     (list (cons (lit first-chars) "{}")
-;           (cons (lit analyse) (%nth 0 %compiled))   ; native-compiled
-;           ...
-;
-; Three things in that are gone.  `make-type` as a bare global is now
-; (prim-ref 'type 'make).  `first-chars` no longer exists at all -- the
-; tokenizer iterates every registered type and scores its analyse hook, so the
-; leading-character prefilter it named was removed rather than renamed.  And
-; the callbacks were compiled to native code through `compile-batch`, which
-; forced the state cells to be GC roots (`heap-mark-root!`, also gone).
-;
-; The port drops the compilation.  lib/x/num/float.x is the live worked
-; example of a reader type in plain x closures -- its `analyse` returns
-; further closures to advance a state machine -- and a curly reader is far
-; cheaper than a float reader.  Plain closures also delete the root problem
-; outright: ordinary bindings are visible to the collector, so nothing needs
-; marking by hand.  Reach for `compile` again only if a measurement asks.
+; The callbacks are plain closures, so the state cells are ordinary bindings
+; and the collector traces them; nothing here needs marking by hand.
 
 (import sweet/ws)
 
@@ -103,8 +89,7 @@
   (fn (_ x) (if (pair? x) (eq? (first x) (first %curly-close)) #f)))
 
 ; Nested `if`, never `cond`, and no allocation in the loop head: this runs
-; inside a reader callback, where the 2024 file's own note warns that cond
-; triggers a collection mid-tokenize.
+; inside a reader callback, where a collection mid-tokenize is a hazard.
 (def %curly-read
   (fn (_ . args)
     (if (= (%buf-last-char (first args)) #\})
@@ -126,9 +111,9 @@
                     (pair (if (pair? %e) (%sweet-strip-ws %e) %e) acc)))))))
         (%go ())))))
 
-; Both hooks reject while %sweet-sus is up -- an include is loading a PLAIN-X
-; file, where a brace is not notation.  One slot read per character, same
-; discipline as the gate in sweet/ws.x, which also owns the why.
+; Both hooks reject while %sweet-sus is up -- an include is loading a plain-x
+; file, where a brace is not notation.  One slot read per character, the same
+; gate as sweet/ws.x.
 (def %curly-analyse
   (fn (_ buffer score chr)
     (if (< 0 (first %sweet-sus))
@@ -146,9 +131,8 @@
         (%seq (%buffer-unread buffer) buffer)
         ()))))
 
-; Registration is a VERB, not a load side effect.  base.x decides when the
-; reader arms, so loading this module in a harness that only wants
-; %infix->prefix does not change how the file being read is tokenized.
+; Registration is an explicit call, not a load side effect, so a harness that
+; only wants %infix->prefix can import this without arming the reader.
 (def %sweet-curly-register!
   (fn (_)
     (%make-type

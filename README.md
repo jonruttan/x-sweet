@@ -23,25 +23,15 @@ indented under another becomes its child. Nothing is rewritten at eval time.
 
 x-sweet is a **lang**: a different surface language loaded over an x-lang
 dialect. Where x-lang and sweet spell something the same way, sweet is free to
-mean something different by it — and here that happens in the *reader* rather
-than the vocabulary, before anything is evaluated. The terms are in x-lang's
+mean something different by it. The terms are in x-lang's
 [lang contract](https://github.com/jonruttan/x-lang/blob/main/docs/lang-contract.md).
 
 ## Status
 
-**34 specs, all green** against x-lang **v0.9.0**, and green on every engine
-pin since the one carrying the
-[#528](https://github.com/jonruttan/x-lang/issues/528) fix.
+**34 specs, all green** against x-lang **v0.9.0**.
 
-The floor beneath that pairing is x-lang v0.7.0: `sweet/ws.x` imports
-`x/reader/indent`, the shared indentation stack, which exists in no earlier
-release. This bundle carried its own copy of that algorithm until then, and the
-two disagreed about what a tab is worth.
-
-Second of the five 2024-era langs to come back, after
-[x-krn](https://github.com/jonruttan/x-krn). It was chosen next because it is the one that stands on the
-*reader* seam rather than the vocabulary — the part of the lang contract
-with no coverage and, until this port, no evidence.
+Requires x-lang **v0.7.0 or later**: `sweet/ws.x` imports `x/reader/indent`,
+the shared indentation stack, which exists in no earlier release.
 
 ## Install
 
@@ -151,12 +141,10 @@ root — so the files land in `<checkout>/langs/NAME`, which is not one of the
 three paths `-l` searches there. It reports success and the lang stays
 invisible. Install into a real `<share>` tree, or use `X_LANG_DIR`.
 
-
-This suite runs in the runner's **direct mode**, and it is the only bundle that
-does: the standard mode wraps each snippet in `(begin …)`, and parentheses
-override indentation, so SRFI-110 cannot be tested through it.
-`tests/gen-harness.sh` writes the generated harness that shims it — see
-[Upstream notes](#upstream-notes).
+The suite runs in the spec runner's **direct mode**: the standard mode wraps
+each snippet in `(begin …)`, and parentheses override indentation, so SRFI-110
+cannot be tested through it. `tests/gen-harness.sh` writes the generated
+harness.
 
 The release tarball is byte-reproducible: it is built from the tag with
 `git archive` and a timestamp-free gzip, so two people rolling one tag get one
@@ -178,75 +166,6 @@ sweet/scheme.x      the eight Scheme names the specs use -- a placeholder
 sweet/base.x        assembles the parts, holds the loop and the include seam
 ```
 
-## What porting it actually cost
-
-Far more than x-krn, and almost none of it where the contract predicts.
-
-**The compiler dependency turned out to be optional.** The 2024 reader compiled
-its tokenizer callbacks to native code through `compile-batch`, which forced
-every state cell to be a hand-declared GC root (`heap-mark-root!`).
-`compile-batch` is gone; `heap-mark-root!` only moved, to `(Heap mark-root!)`.
-But `lib/x/num/float.x` is a live worked
-example of a reader type written in plain closures — its `analyse` returns
-further closures to advance a state machine — and a whitespace scanner is
-cheaper than a float parser. Dropping the compilation dropped the root problem
-with it: ordinary bindings are traced. Reach for `compile` again when a
-measurement asks, not before.
-
-**`first-chars` was removed, not renamed.** The tokenizer now iterates every
-registered type and scores its `analyse` hook, so the leading-character
-prefilter has no equivalent — you just omit it. `make-type` is
-`(prim-ref 'type 'make)`.
-
-**The R7RS dependency was a dependency on eight names.** `sweet-base.x` opened
-with `(include "lang/r7rs/lib/r7rs-base.x")`, which made the smallest
-lang of the five depend on the two largest — neither of them ported.
-What it actually needed was `define`, `lambda`, `begin`, `car`/`cdr`/`cons`,
-`else` and `equal?`. `sweet/scheme.x` is those, and is meant to be deleted:
-when x-r5rs lands as a bundle, it becomes `(import r5rs/base)`. A placeholder
-that says it is one beats a blocked port, and beats rewriting the specs into x
-— which would have changed what the suite tests.
-
-**Three bugs were mine, and they are the interesting ones.**
-
-*The sentinel has to be both unique and self-evaluating.* Once a whitespace
-type is registered it fires everywhere, including inside `(...)`, and whatever
-its reader returns lands in the list being built. The 2024 reader returned
-`#t`, "self-evaluating, so the C eval loop handles it harmlessly" — true
-between top-level forms, and not true inside a list, where it cannot be told
-from a `#t` the program wrote. That file already carried a `%ws-mark` sentinel
-and a `strip-ws` to remove it; nothing ever returned the mark, so the stripper
-had no work and the `#t` stayed. But a *pair* sentinel is worse, not better: it
-leaks to the top-level eval between arming and the loop and dies as
-`Unbound SYMBOL`. A fresh **string** is both — x compares strings by identity,
-so it cannot be forged, and it evaluates to itself, so a leak is inert.
-
-*The signal is the value, not a flag.* This was the hardest one. The 2024
-design set a "whitespace fired" flag and had the grouping loop test it after
-every read. A whitespace run *inside* a `(...)` sets that flag too — the C
-reader reads that list's elements itself — so the grouping loop would see an
-ordinary token with the flag up, conclude a line had ended, and silently
-discard the form:
-
-```scheme
-(define x
-  42)
-x        ; => Unbound SYMBOL 'x
-```
-
-The returned sentinel has no such problem: it belongs to the read that produced
-it. A nested run returns its mark into the list the C reader is building, where
-the stripper removes it, and the outer loop never sees it.
-
-*`%set-cell-int!` on an ordinary pair corrupts the heap.* The obvious modern
-spelling of 2024's `atom-val`/`atom-set!` is `%cell-int`/`%set-cell-int!`.
-They write a raw machine word into an object's first slot — fine on the
-C-created cells every platform caller uses them on, fatal on a `(list 0)`,
-whose slot 0 the collector traces as a pointer. Filed as
-[x-lang#522](https://github.com/jonruttan/x-lang/issues/522); the fix here is
-`%set-first!`, which is traced, with small integers as immediates so the
-arithmetic still allocates nothing.
-
 ## The rule this lang adds
 
 **After `(%sweet-arm!)`, the stream may contain only single-line forms.**
@@ -266,57 +185,10 @@ suite that fails every test with an empty result. Everything structural —
 including the read-eval-print loop — is therefore defined *before* the arm and
 merely called after it.
 
-### The include seam
-
-The rule above governs the stream. Module loads were the same hazard from the
-other side, and for a while they were a real hole: `include` — and `import`,
-which funnels through it — hands the C loader a **plain-x** file, and the
-loader reads and evaluates forms itself, with no `sweet-read` and no stripper
-anywhere on the path. With the reader armed, every multi-line form in an
-imported module picked up sentinels, so
-
-```scheme
-(def name
-  (fn ...))          ; read as (def name <mark> (fn ...))
-```
-
-bound `name` to the sentinel string, and evaluating the mangled remainder
-segfaulted the engine. Single-line defs in the same file read fine, which made
-it look like anything but the reader.
-
-So `sweet/base.x` fronts the `include` *binding* with a suspend/resume pair:
-`sweet/ws.x` carries a suspension depth (`%sweet-sus`), both sweet types
-reject at entry while it is up, and an included file reads exactly as it would
-with sweet never armed. One seam covers every module load — `import`,
-`include-once` and `import-version` all pass through the same `set!`-mutable
-slot, the same mechanism the platform's own relative-path wrapper uses — and
-the wrapper re-raises through a `guard` after resuming, so an error mid-load
-cannot leave the reader suspended. The gate is one slot read per character;
-the depth (not a flag) is what makes nested includes balance.
-
-The `-f` program and the launcher never pass through the seam: `x.sh` cats
-both onto stdin, where `sweet-read` strips. `tests/specs/03-include.spec.md`
-holds both halves — an imported multi-line module binds real values, and the
-notations still group once the load returns.
-
-## Upstream notes
-
-Two of them, both in machinery that exists specifically for this lang:
-
-**The runner's direct mode has been dead since a rename**
-([x-lang#523](https://github.com/jonruttan/x-lang/issues/523)).
-`tests/spec-runner.awk` has a branch whose comment reads "Used by Sweet where
-indentation-based grouping must see raw newlines/tokens" — it is the only way
-to run this bundle's suite, because the standard mode wraps every snippet in
-`(begin ... )` and parentheses override indentation. That branch emits
-`(heap-collect)` between snippets, and the bare global was renamed to the
-`Heap` class without the awk being updated, so it raises `Unbound SYMBOL` on
-every snippet boundary. `tests/gen-harness.sh` shims it.
-
-**`READ_FN` and `REPL_CMD` are the seam that makes this bundle testable at
-all**, and neither is in the contract's seam table — the same gap as
-`%repl-print` and `%repl-read`
-([x-lang#518](https://github.com/jonruttan/x-lang/issues/518)).
+Module loads are exempt. `include` — and `import`, which funnels through it —
+suspends the sweet reader for the duration, so an included file reads exactly
+as it would with sweet never armed. The suspension is a depth, not a flag, so
+nested includes balance, and it resumes even if the load raises.
 
 ## Background
 

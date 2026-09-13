@@ -8,32 +8,22 @@
 ; @copyright 2026 Jon Ruttan
 ; @license MIT No Attribution (MIT-0)
 ;
-; TWO HALVES, MEETING THROUGH A FLAG.  The tokenizer half is sweet/ws.x: it
-; measures the column a whitespace run ends on, and cannot return that as a
-; value because an analyser returns a score or a next state.  So it writes
-; cells, and this file reads them.  It never sees characters; the analyser
-; never sees expressions.
+; The work is split in two. sweet/ws.x is the tokenizer half: an analyser
+; returns a score or a next state, not a value, so it writes the column a
+; whitespace run ends on into cells that this file reads. This file never sees
+; characters; the analyser never sees expressions.
 ;
-; #520, SETTLED.  This was one of two implementations of indentation grouping in
-; the ecosystem, apps/logo/indent.x being the other, and they disagreed about
-; what a tab was worth and about what a dedent to an unopened column means.  The
-; measurement and the three rules are x/reader/indent's now; both are reached
-; through sweet/ws.x, which caches the raw refs.
+; The column measurement and the grouping rules belong to x/reader/indent, and
+; are reached through sweet/ws.x, which caches the raw refs.
 ;
-; WHAT STAYS HERE, AND WHY IT IS NOT THE STACK.  Logo buffered a token list and
-; walked it with an explicit stack, so it drives (Indent feed ...) directly.
-; This reader runs on the LIVE stream and builds nested forms as it returns, so
-; its stack is the recursion -- `base` is the enclosing column, held in a frame
-; rather than in a list.  Rewriting that into an explicit stack would change the
-; shape of a file whose header documents an afternoon lost to a subtle bug, and
-; would buy nothing: what #520 asked for is that neither surface own the RULES,
-; and neither does.
+; This reader runs on the live stream and builds nested forms as it returns, so
+; the recursion is its stack: `base` is the enclosing column, held in a frame
+; rather than an explicit list.
 ;
-; ONE DIVERGENCE IS LEFT, and it is a consequence of the recursion rather than a
-; policy this file sets.  A line dedenting to a column no enclosing level sits
-; at unwinds past every level rather than stopping at the nearest -- Indent's
-; `close` mode stops at the nearest, and `error` refuses.  Closing that means the
-; explicit stack, and it wants its own change with its own spec.
+; Known divergence from x/reader/indent: a line dedenting to a column that no
+; enclosing level sits at unwinds past every level, where Indent's `close` mode
+; stops at the nearest and `error` refuses. Fixing it requires an explicit
+; stack.
 
 (import sweet/ws)
 

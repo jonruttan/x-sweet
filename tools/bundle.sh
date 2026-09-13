@@ -11,16 +11,12 @@
 #
 # Usage: sh tools/bundle.sh [TAG] [OUTDIR]
 #
-# FROM GIT, NOT FROM THE WORKING TREE.  `git archive` ships exactly what is
-# committed at the tag: no .git, no generated harness, no editor droppings, and
-# nothing a dirty checkout happened to be carrying.  A tarball whose contents
-# depend on whose machine rolled it is a tarball whose digest means nothing.
+# The tarball is built from the tag with `git archive`, not from the working
+# tree, so its contents are exactly what is committed.
 #
-# DETERMINISTIC, so two people rolling the same tag get the same bytes and so
-# the same digest.  git archive sorts its entries and stamps every file with
-# the COMMIT's time rather than the clock; gzip is told -n so it does not
-# record a timestamp of its own.  Without that last flag the digest changes
-# every run and the pin becomes unverifiable by anyone but the roller.
+# It is byte-reproducible: git archive sorts its entries and stamps each file
+# with the commit's time, and gzip is passed -n so it records no timestamp of
+# its own. Both are required -- without -n the digest changes every run.
 set -e
 
 cd "$(cd "$(dirname "$0")/.." && pwd)"

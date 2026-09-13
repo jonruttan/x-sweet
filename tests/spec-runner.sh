@@ -1,9 +1,9 @@
 #!/bin/sh
-# # x-sweet -- the Sweet personality for x-lang
+# # x-sweet -- the Sweet lang for x-lang
 #
 # ## tests/spec-runner.sh -- the bundle's runner
 #
-# @description Sources the PLATFORM's spec runner; vendors nothing.
+# @description Sources the platform's spec runner; vendors nothing.
 # @author [Jon Ruttan](jonruttan@gmail.com)
 # @copyright 2026 Jon Ruttan
 # @license MIT No Attribution (MIT-0)
@@ -13,13 +13,10 @@
 #     (   )
 #      " "
 #
-# NOT ONE PATH INTO THE X-LANG SOURCE TREE.  The 2024 runner reached the
-# platform as "$SCRIPT_DIR/../../../tests/spec-runner.sh" and both that and
-# its X_BIN dangled the moment the personality left the repo -- the failure
-# x-lang docs/personality-contract.md calls "addressing, not sharing".
-# Everything here comes from x itself: --share-dir says which tree x reads
-# from (repo root in a checkout, share/x installed) and --engine-path says
-# where the engine is after the wrapper's full discovery order.
+# No path reaches into an x-lang source tree; everything comes from x itself.
+# --share-dir gives the tree x reads from (repo root in a checkout, share/x
+# when installed) and --engine-path gives the engine location after the
+# wrapper's discovery order.
 #
 # Set X to point at a particular x; otherwise the one on PATH is used.
 set -e

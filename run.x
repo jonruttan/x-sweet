@@ -1,6 +1,6 @@
 ; # x-sweet -- sweet-expressions for x-lang
 ;
-; ## run.x -- THE entry
+; ## run.x -- the entry point
 ;
 ; @description SRFI-105 curly infix ({a + b}) and SRFI-110 indentation
 ;   grouping, over a thin Scheme surface.
@@ -12,16 +12,10 @@
 ;   x -l sweet                interactive
 ;   x -l sweet -f prog.sweet  batch
 ;
-; THIS FILE KNOWS NO PATHS, and that is the whole point of the arrangement.
-; x.sh boots the dialect lang.xon declares, arms this bundle's root with
-; import-path!, cats this file, and appends the launcher when no -f was given.
-; So by the time anything below runs, the platform is up and `import` resolves
-; against the bundle wherever it happens to sit.
-;
-; It used to do all of that itself: include "lib/x-core.x" to self-boot, probe
-; a list of candidate directories to guess its own location, and end with its
-; own %batch?-guarded launcher.  Every line of that was a workaround for `-l`
-; not knowing about bundles.  It does now.
+; This file contains no path literals and no boot code. x.sh boots the dialect
+; lang.xon declares, arms this bundle's root with import-path!, cats this file,
+; and appends the launcher when no -f was given, so `import` below resolves
+; against the bundle wherever it sits.
 (import sweet/base)
 
 (set! %lang-name "Sweet Expressions")

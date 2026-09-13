@@ -8,27 +8,13 @@
 ; @copyright 2026 Jon Ruttan
 ; @license MIT No Attribution (MIT-0)
 ;
-; THIS IS A READER TYPE, and the 2024 version of it is the clearest single
-; case of what changed underneath these personalities.  It used to be:
+; A reader type, registered with (prim-ref 'type 'make). There is no
+; leading-character prefilter: the tokenizer iterates every registered type and
+; scores its `analyse` hook, which returns further closures to advance the
+; state machine. lib/x/num/float.x is a worked example of the same shape.
 ;
-;   (make-type "SWEET-CURLY"
-;     (list (cons (lit first-chars) "{}")
-;           (cons (lit analyse) (%nth 0 %compiled))   ; native-compiled
-;           ...
-;
-; Three things in that are gone.  `make-type` as a bare global is now
-; (prim-ref 'type 'make).  `first-chars` no longer exists at all -- the
-; tokenizer iterates every registered type and scores its analyse hook, so the
-; leading-character prefilter it named was removed rather than renamed.  And
-; the callbacks were compiled to native code through `compile-batch`, which
-; forced the state cells to be GC roots (`heap-mark-root!`, also gone).
-;
-; The port drops the compilation.  lib/x/num/float.x is the live worked
-; example of a reader type in plain x closures -- its `analyse` returns
-; further closures to advance a state machine -- and a curly reader is far
-; cheaper than a float reader.  Plain closures also delete the root problem
-; outright: ordinary bindings are visible to the collector, so nothing needs
-; marking by hand.  Reach for `compile` again only if a measurement asks.
+; The callbacks are plain closures, so the state cells are ordinary bindings
+; and the collector traces them; nothing here needs marking by hand.
 
 (import sweet/ws)
 

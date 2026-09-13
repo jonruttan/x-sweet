@@ -54,13 +54,12 @@ PREFIX=$HOME/.local make install  # or a particular prefix
 ```
 
 `make uninstall` removes it either way. An installed x searches
-`<share>/langs/*/lang.xon`, so a lang is installed when its files are there —
-no registry, no database.
+`<share>/langs/*/lang.xon`: a lang is installed when its files are there.
+There is no registry or database.
 
-**One trap, and it is the one you will hit.** `x` decides where to look for
-langs from the directory you run it *in*. Inside an **x-lang checkout** it
-searches `deps/langs/` and an installed lang is invisible, however correctly it
-was installed:
+`x` resolves langs relative to the directory it runs in. Inside an x-lang
+checkout it searches `deps/langs/` only, so an installed lang is not found
+there:
 
 ```
 $ cd path/to/x-lang && x -l sweet
@@ -69,8 +68,8 @@ Error: no library, app or lang named 'sweet'
       and deps/langs/*/lang.xon
 ```
 
-Run it from anywhere else, or name the bundles explicitly — `X_LANG_DIR` wins
-in both modes:
+Run `x` from another directory, or set `X_LANG_DIR`, which takes precedence in
+both cases:
 
 ```bash
 X_LANG_DIR=$HOME/.local/share/x/langs/ x -l sweet   # the installed one
@@ -115,12 +114,11 @@ x -l sweet -f program.sweet   # batch
 ```
 
 x-lang boots the dialect `lang.xon` declares, arms this bundle's module root,
-and loads `run.x` on top — which is why nothing here needs to know a path.
+and loads `run.x` on top.
 
-**Mind the arm.** Everything structural has to be defined *before*
-`(%sweet-arm!)` and merely called after it — see
-[the rule this lang adds](#the-rule-this-lang-adds), which is the one thing
-that will bite you silently.
+Everything structural must be defined *before* `(%sweet-arm!)` and only called
+after it — see [the arm rule](#the-arm-rule), which fails silently when
+ignored.
 
 ## Development
 
@@ -138,8 +136,8 @@ fixed.
 **Do not `make install` into an x-lang checkout.** The Makefile asks
 `$(X) --share-dir` where to put the bundle, and a checkout answers with its own
 root — so the files land in `<checkout>/langs/NAME`, which is not one of the
-three paths `-l` searches there. It reports success and the lang stays
-invisible. Install into a real `<share>` tree, or use `X_LANG_DIR`.
+three paths `-l` searches there. The install reports success and the lang is
+still not found. Install into a real `<share>` tree, or use `X_LANG_DIR`.
 
 The suite runs in the spec runner's **direct mode**: the standard mode wraps
 each snippet in `(begin …)`, and parentheses override indentation, so SRFI-110
@@ -157,16 +155,16 @@ bundle shows up as a red build rather than a surprise later.
 
 ```
 lang.xon     what this bundle is: name, dialect, release pairing
-run.x               the entry -- and it knows no paths at all
+run.x               the entry point
 sweet/ws.x          the whitespace token both SRFIs stand on
 sweet/curly.x       SRFI-105
 sweet/indent.x      SRFI-110
-sweet/printer.x     Scheme's `write`, which is not x's
-sweet/scheme.x      the eight Scheme names the specs use -- a placeholder
+sweet/printer.x     Scheme-style `write`
+sweet/scheme.x      the eight Scheme bindings the specs need (placeholder)
 sweet/base.x        assembles the parts, holds the loop and the include seam
 ```
 
-## The rule this lang adds
+## The arm rule
 
 **After `(%sweet-arm!)`, the stream may contain only single-line forms.**
 
@@ -180,15 +178,14 @@ it is silent and fatal:
 (if "mark" (null? %r) "mark" () "mark" (%seq ...))
 ```
 
-which takes the wrong branch and prints nothing at all. No error, no output, a
-suite that fails every test with an empty result. Everything structural —
-including the read-eval-print loop — is therefore defined *before* the arm and
-merely called after it.
+which takes the wrong branch and prints nothing. There is no error and no
+output. Define everything structural — including the read-eval-print loop —
+before the arm, and only call it after.
 
 Module loads are exempt. `include` — and `import`, which funnels through it —
 suspends the sweet reader for the duration, so an included file reads exactly
-as it would with sweet never armed. The suspension is a depth, not a flag, so
-nested includes balance, and it resumes even if the load raises.
+as it would with sweet never armed. Nested includes are handled, and the reader
+resumes even if the load raises.
 
 ## Background
 

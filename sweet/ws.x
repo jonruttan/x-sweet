@@ -215,11 +215,11 @@
   (fn (_ buffer score chr)
     (if (< 0 (first %sweet-sus))
       ()
-      (if (if (= chr #\space) #t
-            (if (= chr #\tab) #t
-              (if (= chr #\newline) #t
-                (if (= chr #\return) #t
-                  (if (= chr 11) #t (= chr 12))))))
+      (if (match
+            ((= chr #\space) #t)   ((= chr #\tab) #t)
+            ((= chr #\newline) #t) ((= chr #\return) #t)
+            ((= chr 11) #t)        ((= chr 12) #t)
+            (#t #f))
         (%seq
           (if (= chr #\newline)
             (%seq (%set-first! %nl 1) (%set-first! %lv 0))

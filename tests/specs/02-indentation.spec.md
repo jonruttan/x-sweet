@@ -146,11 +146,8 @@ x
 
 ### a tab-indented body is a child
 
-Until #520 this suite had no tab case at all, in either direction -- which is
-how `sweet/ws.x` came to advance the column by 8 on a tab where SRFI-110
-advances to the next multiple of 8, and nothing noticed. The arithmetic is
-asserted precisely in the platform's own `Indent advance` unit; this case is
-here so the surface itself has a tab in it.
+A tab advances to the next multiple of 8, so a tab-indented body groups as a
+child.
 
 ```scheme
 define x

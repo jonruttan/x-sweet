@@ -1,14 +1,12 @@
-; lang.xon -- what this bundle IS.
+; lang.xon -- what this bundle is.
 ;
-; xon: read with the ordinary reader and never evaluated, like every other
-; manifest in the x-lang world (pin.xon, engine.pin.xon).  A form a reader
-; does not know is a loud error, never a skip -- a manifest that silently
-; ignores half of itself cannot be extended without wondering which readers
-; obeyed which half.
+; xon: read with the ordinary reader and never evaluated, like every manifest
+; in the x-lang world (pin.xon, engine.pin.xon). An unknown form is a loud
+; error, never a silent skip.
 ;
 ; FORMAT (one form per line):
 ;   (lang "NAME")               the -l name
-;   (dialect NAME)              he | xe | rn -- a REQUIREMENT, not a taste
+;   (dialect NAME)              he | xe | rn -- a requirement
 ;   (requires-release "TAG")    the x-lang this bundle was built against
 ;   (requires-lang "NAME" ["V"]) another lang this one is written on top
 ;                               of, optionally at an exact version
@@ -16,23 +14,15 @@
 
 (lang "sweet")
 
-; HELIUM, derived rather than preferred.  The reader types are built from plain
-; closures over the catalog's `type`, `buf` and `io` prims, all of which x-core
-; provides; nothing here reaches for a float, a socket, or a file.
+; Helium: the reader types are plain closures over the catalog's `type`, `buf`
+; and `io` prims, all provided by x-core. Nothing here needs a float, a socket,
+; or a file.
 (dialect he)
 
-; PAIRING, NOT PINNING.  A digest freezes bytes; it says nothing about whether
-; those bytes still run against a platform that moved.  This row is the part
-; that is checkable, and it is compared for EQUALITY, never parsed.
-;
-; v0.7.0 is REQUIRED here, not merely paired with.  sweet/ws.x imports
-; x/reader/indent -- the shared indentation stack -- and it exists in no
-; earlier release: this bundle carried its own copy of that algorithm until
-; v0.7.0, and the two disagreed about what a tab is worth.  An older x-lang
-; does not run this bundle at all, rather than running it differently.
-;
-; v0.6.0 was the floor before that: bundle acquisition, `-l` loading,
-; --share-dir answering from any cwd, and eval! in the seam.
+; The x-lang release this bundle is built and tested against; CI compares it
+; for equality. v0.7.0 or later is required: sweet/ws.x imports
+; x/reader/indent, the shared indentation stack, which exists in no earlier
+; release.
 
 (requires-release "v0.13.0")
 

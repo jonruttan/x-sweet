@@ -24,25 +24,11 @@
 ; Scheme results, not x's round-trippable ones -- see sweet/printer.x.
 (set! %repl-print %sweet-repl-print)
 
-; ARMED LAST, AND NOTHING STRUCTURAL MAY FOLLOW.  Registering SWEET-WS changes
-; how the very next character of input is tokenized, so any multi-line form
-; read after this point has whitespace sentinels injected into it -- silent and
-; fatal in an arity-sensitive form.  See the note in sweet/base.x.  Everything
-; below is one line each, deliberately.
-;
-; THE LOOP IS OURS, not the launcher's: a sweet "unit" is an indented block,
-; not an s-expression, so %sweet-run reads with sweet-read.
-;
-; NO BANNER HERE, and the line that used to be here is worth a note because it
-; was dead for its whole life.  x.sh appends lib/x/repl/launch.x after this
-; file when no -f was given, and launch.x opens with (%banner) -- so the
-; greeting has always come from there.  This file's own (unless %batch?
-; (%banner)) never fired, because the wrapper passed --batch unconditionally
-; for a bundle and %batch? was therefore always true.
-;
-; x-lang made %batch? honest (it means "a file was supplied" again, for
-; bundles as well as dialects), which turned the dead line live and printed
-; the banner twice.  Deleting it is the fix rather than guarding it harder:
-; there is one launcher and it already greets.
+; Arm last, then run: registering SWEET-WS changes how the next character is
+; tokenized, so a multi-line form read after this point has whitespace
+; sentinels injected among its elements -- silent and fatal in an
+; arity-sensitive form. The setup above is one line each, and %sweet-run (the
+; loop) is defined in sweet/base.x before the arm. The launcher x.sh appends
+; prints the banner; this file does not.
 (%sweet-arm!)
 (%sweet-run)

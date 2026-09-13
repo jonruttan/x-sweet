@@ -89,8 +89,7 @@
   (fn (_ x) (if (pair? x) (eq? (first x) (first %curly-close)) #f)))
 
 ; Nested `if`, never `cond`, and no allocation in the loop head: this runs
-; inside a reader callback, where the 2024 file's own note warns that cond
-; triggers a collection mid-tokenize.
+; inside a reader callback, where a collection mid-tokenize is a hazard.
 (def %curly-read
   (fn (_ . args)
     (if (= (%buf-last-char (first args)) #\})
@@ -112,9 +111,9 @@
                     (pair (if (pair? %e) (%sweet-strip-ws %e) %e) acc)))))))
         (%go ())))))
 
-; Both hooks reject while %sweet-sus is up -- an include is loading a PLAIN-X
-; file, where a brace is not notation.  One slot read per character, same
-; discipline as the gate in sweet/ws.x, which also owns the why.
+; Both hooks reject while %sweet-sus is up -- an include is loading a plain-x
+; file, where a brace is not notation.  One slot read per character, the same
+; gate as sweet/ws.x.
 (def %curly-analyse
   (fn (_ buffer score chr)
     (if (< 0 (first %sweet-sus))
@@ -132,9 +131,8 @@
         (%seq (%buffer-unread buffer) buffer)
         ()))))
 
-; Registration is a VERB, not a load side effect.  base.x decides when the
-; reader arms, so loading this module in a harness that only wants
-; %infix->prefix does not change how the file being read is tokenized.
+; Registration is an explicit call, not a load side effect, so a harness that
+; only wants %infix->prefix can import this without arming the reader.
 (def %sweet-curly-register!
   (fn (_)
     (%make-type

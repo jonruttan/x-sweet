@@ -31,7 +31,7 @@
 (provide sweet/ws
   %sweet-ws-register! %sweet-ws-reset! %sweet-column %sweet-strip-ws
   %sweet-ws-mark %sweet-line-end! %sweet-line-ended? %sweet-classify
-  %sweet-sus %sweet-suspend! %sweet-resume!)
+  %sweet-sus %sweet-suspend! %sweet-resume! %sweet-end?)
 
 (def %make-type (prim-ref (lit type) (lit make)))
 
@@ -103,6 +103,16 @@
 ; itself, so the leak is inert, where a pair would be called and raise Unbound
 ; SYMBOL.
 (def %sweet-ws-mark "\u0000sweet-ws")
+
+; End of input, as the platform's read reports it.  An engine whose read
+; converts end of input to nil answers nil there, and one whose read passes
+; the EOF sentinel through answers %token-eof.  Nil is also what a literal
+; () reads as, so stopping at either keeps both readers below correct on
+; both engines, and a () ends a read exactly as it did before.
+(def %sweet-same? (prim-ref (lit obj) (lit same?)))
+(def %sweet-end?
+  (fn (_ x)
+    (if (null? x) #t (%sweet-same? x %token-eof))))
 
 ; Recursive, because a mark can land at any depth: (a (b\n c)) puts one in the
 ; inner list.  Improper tails are preserved -- a personality whose reader

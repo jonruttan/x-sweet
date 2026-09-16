@@ -98,7 +98,7 @@
         (def %go
           (fn (self acc)
             (def %e (%prim-read))
-            (if (null? %e)
+            (if (%sweet-end? %e)
               (%infix->prefix (%sweet-reverse acc ()))
               (if (%curly-close? %e)
                 (%infix->prefix (%sweet-reverse acc ()))

@@ -70,7 +70,7 @@
     (def %go
       (fn (self acc)
         (def %t (%prim-read))
-        (if (null? %t)
+        (if (%sweet-end? %t)
           ; End of input.  The caller must be able to tell this from a line
           ; end, or %sweet-siblings loops forever on the last line of a file.
           (%seq (%sweet-line-end! 0) (%sw1 (%sweet-rev acc ())))

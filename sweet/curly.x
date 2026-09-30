@@ -11,7 +11,7 @@
 ; A reader type, registered with (prim-ref 'type 'make). There is no
 ; leading-character prefilter: the tokenizer iterates every registered type and
 ; scores its `analyse` hook, which returns further closures to advance the
-; state machine. lib/x/num/float.x is a worked example of the same shape.
+; state machine. lib/x/num/float.x is a worked example of the same pattern.
 ;
 ; The callbacks are plain closures, so the state cells are ordinary bindings
 ; and the collector traces them; nothing here needs marking by hand.

@@ -25,7 +25,7 @@
 ; The version comes from a stamp file beside the bundle, not from this source:
 ; `make install` and tools/bundle.sh both write <bundle>/version from git
 ; describe. x.sh emits %lang-root ahead of the entry, so this reads the stamp
-; with a raw syscall -- the shape module.x's versioned-import scan uses, since
+; with a raw syscall -- the pattern module.x's versioned-import scan uses, since
 ; it runs at load before the class layer, as body defs. Any miss yields "dev":
 ; %lang-root unbound (the spec harness imports this directly), no stamp file
 ; (a checkout), or a failed read. A leading "v" is stripped for the banner,
@@ -40,7 +40,7 @@
     (def %ci (prim-ref (lit char) (lit ->int)))
     ; O_RDONLY is 0 in both of x/platform/syscall's flag tables; the perm
     ; seat is ignored without O_CREAT and stays 420 so the call keeps the
-    ; uniform 3-arg shape module.x and sys/file.x use.
+    ; uniform 3-arg pattern module.x and sys/file.x use.
     (def %fd (syscall (syscall-id (lit open)) (%sa %lang-root "/version") 0 420))
     (if (< %fd 0)
       "dev"

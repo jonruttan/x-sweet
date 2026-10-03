@@ -24,6 +24,6 @@
 ; x/reader/indent, the shared indentation stack, which exists in no earlier
 ; release.
 
-(requires-release "v0.20.0")
+(requires-release "v0.24.0")
 
 (entry "run.x")

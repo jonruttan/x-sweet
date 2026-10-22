@@ -15,7 +15,7 @@
 ;
 ; - Once the type is registered it fires everywhere, including inside `(...)`
 ;   and `{...}`, and whatever its reader returns lands in the list being built.
-;   The reader returns %sweet-ws-mark; %sweet-strip-ws removes it. The mark is
+;   The reader returns sweet-ws-mark; sweet-strip-ws removes it. The mark is
 ;   a string compared with `eq?` -- by identity -- so no value a program can
 ;   write collides with it.
 ;
@@ -28,11 +28,7 @@
 ;   heap (x-lang#522). Small integers are immediates, so the arithmetic below
 ;   allocates nothing either way.
 
-(provide sweet/ws
-  %sweet-ws-register! %sweet-ws-reset! %sweet-column %sweet-strip-ws
-  %sweet-ws-mark %sweet-line-end! %sweet-line-ended? %sweet-classify
-  %sweet-sus %sweet-suspend! %sweet-resume! %sweet-end?)
-
+(module sweet/ws)
 (def %make-type (prim-ref (lit type) (lit make)))
 
 ; Column arithmetic comes from x/reader/indent, shared with Logo and anything
@@ -42,7 +38,7 @@
 ; allocate mid-token.
 (import x/reader/indent)
 (def %sweet-advance (prim-ref (lit indent) (lit advance)))
-(def %sweet-classify (prim-ref (lit indent) (lit classify)))
+(def sweet-classify (prim-ref (lit indent) (lit classify)))
 
 ; --- State -------------------------------------------------------------------
 ; Plain one-slot lists used as int cells. Ordinary global bindings, so the
@@ -55,25 +51,25 @@
 (def %wsf (list 0))
 ; Suspension depth for the include path. Registered types fire on every buffer,
 ; and `include` (which import and include-once funnel through) hands the C
-; loader a plain-x file it reads and evaluates itself, with no %sweet-strip-ws.
+; loader a plain-x file it reads and evaluates itself, with no sweet-strip-ws.
 ; While this cell is nonzero both sweet analysers reject at entry and the
 ; platform's own types take every token, so an included file reads as it would
 ; with sweet never armed. A depth, not a flag, because includes nest. Exported
 ; as a cell, not a predicate: the analysers pay one slot read per character,
 ; never a closure call. base.x wraps `include` with the pair below.
-(def %sweet-sus (list 0))
-(def %sweet-suspend!
-  (fn (_) (%set-first! %sweet-sus (+ (first %sweet-sus) 1)) ()))
+(def sweet-sus (list 0))
+(def sweet-suspend!
+  (fn (_) (%set-first! sweet-sus (+ (first sweet-sus) 1)) ()))
 ; Popping past zero is a no-op: an underflow is a wrapper bug, and should read
 ; as nothing happening rather than the reader dying while a form is on the wire.
-(def %sweet-resume!
+(def sweet-resume!
   (fn (_)
-    (if (< 0 (first %sweet-sus))
-      (%set-first! %sweet-sus (- (first %sweet-sus) 1))
+    (if (< 0 (first sweet-sus))
+      (%set-first! sweet-sus (- (first sweet-sus) 1))
       ())
     ()))
 
-(def %sweet-ws-reset!
+(def sweet-ws-reset!
   (fn (_)
     (%set-first! %nl 0)
     (%set-first! %lv 0)
@@ -85,14 +81,14 @@
 ; reads those elements itself), so the grouping loop could not tell a real line
 ; end from one deep in a nested form. The sentinel belongs to the read that
 ; produced it: a nested run returns its mark into the list the C reader builds,
-; where %sweet-strip-ws removes it, and the outer loop never sees it.
+; where sweet-strip-ws removes it, and the outer loop never sees it.
 ;
 ; %wsf answers only the question the value cannot: did the read that just
 ; returned stop at a line end or at end of input? The grouping layer knows and
 ; writes it; the tokenizer does not.
-(def %sweet-line-end! (fn (_ v) (%set-first! %wsf v) ()))
-(def %sweet-line-ended? (fn (_) (if (= (first %wsf) 0) #f #t)))
-(def %sweet-column (fn (_) (first %lv)))
+(def sweet-line-end! (fn (_ v) (%set-first! %wsf v) ()))
+(def sweet-line-ended? (fn (_) (if (= (first %wsf) 0) #f #t)))
+(def sweet-column (fn (_) (first %lv)))
 
 ; --- The sentinel ------------------------------------------------------------
 ; A string, load-bearing twice over. Unique: x compares strings by identity, so
@@ -102,7 +98,7 @@
 ; after the arm), and those reads return the mark -- a string evaluates to
 ; itself, so the leak is inert, where a pair would be called and raise Unbound
 ; SYMBOL.
-(def %sweet-ws-mark "\u0000sweet-ws")
+(def sweet-ws-mark "\u0000sweet-ws")
 
 ; End of input, as the platform's read reports it.  An engine whose read
 ; converts end of input to nil answers nil there, and one whose read passes
@@ -110,18 +106,18 @@
 ; () reads as, so stopping at either keeps both readers below correct on
 ; both engines, and a () ends a read exactly as it did before.
 (def %sweet-same? (prim-ref (lit obj) (lit same?)))
-(def %sweet-end?
+(def sweet-end?
   (fn (_ x)
     (if (null? x) #t (%sweet-same? x %token-eof))))
 
 ; Recursive, because a mark can land at any depth: (a (b\n c)) puts one in the
 ; inner list.  Improper tails are preserved -- a personality whose reader
 ; cannot round-trip (a . b) cannot read a pair.
-(def %sweet-strip-ws
+(def sweet-strip-ws
   (fn (self lst)
     (if (not (pair? lst))
-      (if (eq? lst %sweet-ws-mark) () lst)
-      (if (eq? (first lst) %sweet-ws-mark)
+      (if (eq? lst sweet-ws-mark) () lst)
+      (if (eq? (first lst) sweet-ws-mark)
         (self (rest lst))
         (pair
           (if (pair? (first lst)) (self (first lst)) (first lst))
@@ -139,22 +135,21 @@
 (def %ws-loop ())
 (set! %ws-loop
   (fn (_ buffer score chr)
-    (if (= chr #\newline)
-      (if (= (first %nl) 0)
-        (%seq (%set-first! %nl 1) (%seq (%set-first! %lv 0) %ws-loop))
-        (%seq (%set-first! %lv 0) (%score-set score 1 buffer)))
+    (match
+      ((= chr #\newline)
+        (if (= (first %nl) 0)
+          (%seq (%set-first! %nl 1) (%seq (%set-first! %lv 0) %ws-loop))
+          (%seq (%set-first! %lv 0) (%score-set score 1 buffer))))
       ; Space and tab share a branch; %sweet-advance applies the column width.
-      (if (if (= chr #\space) #t (= chr #\tab))
+      ((if (= chr #\space) #t (= chr #\tab))
         (%seq
           (if (= (first %nl) 0)
             ()
             (%set-first! %lv (%sweet-advance (first %lv) chr 8)))
-          %ws-loop)
-        (if (if (= chr #\return) #t (if (= chr 11) #t (= chr 12)))
-          %ws-loop
-          (if (= (first %nl) 0)
-            ()
-            (%score-set score 1 buffer))))))))
+          %ws-loop))
+      ((if (= chr #\return) #t (if (= chr 11) #t (= chr 12))) %ws-loop)
+      ((= (first %nl) 0) ())
+      (#t (%score-set score 1 buffer))))))
 
 ; State 1: the entry.  The first character must be whitespace or this is not
 ; our token at all.  Suspended (an include is loading a plain-x file), it
@@ -163,7 +158,7 @@
 ; tokens -- include runs during eval, never mid-tokenize.
 (def %ws-analyse
   (fn (_ buffer score chr)
-    (if (< 0 (first %sweet-sus))
+    (if (< 0 (first sweet-sus))
       ()
       (if (match
             ((= chr #\space) #t)   ((= chr #\tab) #t)
@@ -184,12 +179,17 @@
 (def %ws-read
   (fn (_ . args)
     (%buffer-unread (first args))
-    %sweet-ws-mark))
+    sweet-ws-mark))
 
-(def %sweet-ws-register!
+(def sweet-ws-register!
   (fn (_)
     (%make-type
       "SWEET-WS"
       (list
         (pair (lit analyse) %ws-analyse)
         (pair (lit read) %ws-read)))))
+
+(provide sweet/ws
+  sweet-classify sweet-column sweet-end? sweet-line-end!
+  sweet-line-ended? sweet-resume! sweet-strip-ws sweet-sus
+  sweet-suspend! sweet-ws-mark sweet-ws-register! sweet-ws-reset!)

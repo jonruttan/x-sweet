@@ -14,18 +14,17 @@
 ;
 ;     (write {1 + 2 * 3})   ->   ($nfx$ 1 + 2 * 3)
 
-(provide sweet/printer %sweet-write %sweet-repl-print)
-
 ; Recursive descent, because only the SYMBOL leaf differs from x's `write`.
 ; Everything else -- strings, ints, chars, booleans, procedures -- delegates,
 ; so the personality inherits the platform's rendering and stays correct as new
 ; types arrive.
-(def %sweet-write ())
+(module sweet/printer)
+(def sweet-write ())
 (def %x-write write)
 
 (def %sweet-write-items
   (fn (_ v)
-    (%sweet-write (first v))
+    (sweet-write (first v))
     (if (null? (rest v))
       ()
       ; Proper tail: keep going.  Improper: the dotted spelling.  A printer
@@ -33,9 +32,9 @@
       ; substrate.
       (if (pair? (rest v))
         (%seq (display " ") (%sweet-write-items (rest v)))
-        (%seq (display " . ") (%sweet-write (rest v)))))))
+        (%seq (display " . ") (sweet-write (rest v)))))))
 
-(set! %sweet-write
+(set! sweet-write
   (fn (_ v)
     (if (pair? v)
       (%seq (display "(") (%seq (%sweet-write-items v) (display ")")))
@@ -43,7 +42,10 @@
 
 ; The %repl-print contract: nil is the "no value" result and prints only the
 ; newline, matching lib/x/repl/loop.x.
-(def %sweet-repl-print
+(def sweet-repl-print
   (fn (_ result)
-    (unless (null? result) (%sweet-write result))
+    (unless (null? result) (sweet-write result))
     (newline)))
+
+(provide sweet/printer
+  sweet-repl-print sweet-write)

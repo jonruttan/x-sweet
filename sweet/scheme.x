@@ -13,10 +13,9 @@
 ; it and this file becomes `(import r5rs/base)`. Nothing here defines what
 ; Scheme means; x-r5rs is the arbiter of that.
 
-(provide sweet/scheme define lambda begin)
-
 ; `lambda`: Scheme's formals have no receiver, x's `fn` does -- (lambda (n) ...)
 ; is (fn (_ n) ...).  Splicing the `_` in is the whole of the difference.
+(module sweet/scheme)
 (def lambda
   (op (formals . body)
     e
@@ -45,8 +44,6 @@
         (eval (pair (lit lambda) (pair (rest name-or-form) body)) e))
       (%sweet-def-global name-or-form (eval (first body) e)))))
 
-(def begin do)
-
 ; The rest are one-for-one renames of live x names.  They are `def`, not
 ; operatives, because they are values -- rebinding a name costs nothing and
 ; keeps the specs readable as Scheme.
@@ -56,4 +53,7 @@
 (def else #t)
 
 ; x spells these differently; sweet's specs use the Scheme spellings.
-(def equal? eq?)
+
+(provide sweet/scheme
+  (global car) (global cdr) (global cons) (global define) (global else)
+  (global lambda))

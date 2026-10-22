@@ -16,9 +16,9 @@
 ; The callbacks are plain closures, so the state cells are ordinary bindings
 ; and the collector traces them; nothing here needs marking by hand.
 
+(module sweet/curly)
+(import sweet/ws sweet-end? sweet-strip-ws sweet-sus sweet-ws-mark)
 (import sweet/ws)
-
-(provide sweet/curly %sweet-curly-register! $nfx$)
 
 ; --- Catalog fetches ---------------------------------------------------------
 ; ns `type`/`buf`/`io` are de-registered as ambient names (R5); consumers hold
@@ -49,11 +49,11 @@
 
 (def %sweet-all-eq?
   (fn (self lst)
-    (if (null? lst)
-      #t
-      (if (null? (rest lst))
-        #t
-        (if (eq? (first lst) (first (rest lst))) (self (rest lst)) #f)))))
+    (match
+      ((null? lst) #t)
+      ((null? (rest lst)) #t)
+      ((eq? (first lst) (first (rest lst))) (self (rest lst)))
+      (#t #f))))
 
 (def %sweet-reverse
   (fn (self lst acc)
@@ -61,20 +61,19 @@
 
 (def %infix->prefix
   (fn (_ toks)
-    (if (null? toks)
-      ()
+    (match
+      ((null? toks) ())
       ; {x} is x -- a single element is identity, not a one-element call.
-      (if (null? (rest toks))
-        (first toks)
-        ; {a b} has no operator to fold: two elements stay a list, which is
-        ; what SRFI-105 calls the unary case ({- 5}, {not #f}).
-        (if (null? (rest (rest toks)))
-          toks
-          (let ((ops (%sweet-ops toks))
-                (operands (%sweet-operands toks)))
-            (if (%sweet-all-eq? ops)
-              (pair (first ops) operands)
-              (pair (lit $nfx$) toks))))))))
+      ((null? (rest toks)) (first toks))
+      ; {a b} has no operator to fold: two elements stay a list, which is
+      ; what SRFI-105 calls the unary case ({- 5}, {not #f}).
+      ((null? (rest (rest toks))) toks)
+      (#t
+        (let ((ops (%sweet-ops toks))
+              (operands (%sweet-operands toks)))
+          (if (%sweet-all-eq? ops)
+            (pair (first ops) operands)
+            (pair (lit $nfx$) toks)))))))
 
 ; The SRFI's escape hatch: mixed operators are not an error, they are a call to
 ; $nfx$, which a program may define.  Undefined, it reports itself.
@@ -98,25 +97,22 @@
         (def %go
           (fn (self acc)
             (def %e (%prim-read))
-            (if (%sweet-end? %e)
-              (%infix->prefix (%sweet-reverse acc ()))
-              (if (%curly-close? %e)
-                (%infix->prefix (%sweet-reverse acc ()))
-                ; A whitespace run inside braces is not an operand.  {a +\n b}
-                ; is one infix expression, so the sentinel is dropped rather
-                ; than folded -- indentation does not group inside {}.
-                (if (eq? %e %sweet-ws-mark)
-                  (self acc)
-                  (self
-                    (pair (if (pair? %e) (%sweet-strip-ws %e) %e) acc)))))))
+            (match
+              ((sweet-end? %e) (%infix->prefix (%sweet-reverse acc ())))
+              ((%curly-close? %e) (%infix->prefix (%sweet-reverse acc ())))
+              ; A whitespace run inside braces is not an operand.  {a +\n b}
+              ; is one infix expression, so the sentinel is dropped rather
+              ; than folded -- indentation does not group inside {}.
+              ((eq? %e sweet-ws-mark) (self acc))
+              (#t (self (pair (if (pair? %e) (sweet-strip-ws %e) %e) acc))))))
         (%go ())))))
 
-; Both hooks reject while %sweet-sus is up -- an include is loading a plain-x
+; Both hooks reject while sweet-sus is up -- an include is loading a plain-x
 ; file, where a brace is not notation.  One slot read per character, the same
 ; gate as sweet/ws.x.
 (def %curly-analyse
   (fn (_ buffer score chr)
-    (if (< 0 (first %sweet-sus))
+    (if (< 0 (first sweet-sus))
       ()
       (if (if (= chr #\{) #t (= chr #\}))
         (%score-set score 1 buffer)
@@ -125,7 +121,7 @@
 ; { and } terminate an adjacent token, so a{b} reads as a then {b}.
 (def %curly-delimit
   (fn (_ buffer . rest)
-    (if (< 0 (first %sweet-sus))
+    (if (< 0 (first sweet-sus))
       ()
       (if (if (= (%buf-last-char buffer) #\{) #t (= (%buf-last-char buffer) #\}))
         (%seq (%buffer-unread buffer) buffer)
@@ -133,7 +129,7 @@
 
 ; Registration is an explicit call, not a load side effect, so a harness that
 ; only wants %infix->prefix can import this without arming the reader.
-(def %sweet-curly-register!
+(def sweet-curly-register!
   (fn (_)
     (%make-type
       "SWEET-CURLY"
@@ -141,3 +137,6 @@
         (pair (lit analyse) %curly-analyse)
         (pair (lit read) %curly-read)
         (pair (lit delimit) %curly-delimit)))))
+
+(provide sweet/curly
+  (global $nfx$) sweet-curly-register!)

@@ -55,8 +55,9 @@ cat > "$OUT" <<EOF
 (def %install-root "$X_ROOT")
 (include "$X_BASE")
 (import-path! "$BUNDLE")
-(import sweet/base)
-(set! %repl-print %sweet-repl-print)
+(import sweet/base sweet-arm! sweet-run)
+(import sweet/printer sweet-repl-print)
+(set! %repl-print sweet-repl-print)
 ; Shim for the runner: direct mode emits (heap-collect) between snippets, but
 ; that global moved onto the Heap class. x-lang#523; delete this line when the
 ; runner says (Heap collect).
@@ -65,7 +66,7 @@ cat > "$OUT" <<EOF
 ; the next character is tokenized. Go through `repl` so a state image of this
 ; harness can start it again; the arm stays inside it, the last thing before
 ; the stream is read.
-(set! repl (fn (_) (%seq (%sweet-arm!) (%sweet-run))))
+(set! repl (fn (_) (%seq (sweet-arm!) (sweet-run))))
 ; Not while the image is being written: that child's stdin is the writer's own
 ; script, which %sweet-run would read as sweet source. %image-writing is bound
 ; in that child alone; a normal boot raises Unbound and answers #f.

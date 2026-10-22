@@ -16,19 +16,20 @@
 ; lang.xon declares, arms this bundle's root with import-path!, cats this file,
 ; and appends the launcher when no -f was given, so `import` below resolves
 ; against the bundle wherever it sits.
-(import sweet/base)
 
+(import sweet/base sweet-arm! sweet-run sweet-version)
+(import sweet/printer sweet-repl-print)
 (set! %lang-name "Sweet Expressions")
 (set! %lang-version sweet-version)
 (set! %repl-prompt "")
 ; Scheme results, not x's round-trippable ones -- see sweet/printer.x.
-(set! %repl-print %sweet-repl-print)
+(set! %repl-print sweet-repl-print)
 
 ; Arm last, then run: registering SWEET-WS changes how the next character is
 ; tokenized, so a multi-line form read after this point has whitespace
 ; sentinels injected among its elements -- silent and fatal in an
-; arity-sensitive form. The setup above is one line each, and %sweet-run (the
+; arity-sensitive form. The setup above is one line each, and sweet-run (the
 ; loop) is defined in sweet/base.x before the arm. The launcher x.sh appends
 ; prints the banner; this file does not.
-(%sweet-arm!)
-(%sweet-run)
+(sweet-arm!)
+(sweet-run)

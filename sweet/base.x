@@ -12,14 +12,13 @@
 ; not start a session either -- launching is the entry's job, and a bare
 ; (sweet-repl) call here would make merely importing the language open one.
 
-(import sweet/printer)
+(module sweet/base)
+(import sweet/curly sweet-curly-register!)
+(import sweet/indent sweet-read)
+(import sweet/printer sweet-repl-print sweet-write)
+(import sweet/ws
+  sweet-resume! sweet-suspend! sweet-ws-register! sweet-ws-reset!)
 (import sweet/scheme)
-(import sweet/ws)
-(import sweet/curly)
-(import sweet/indent)
-
-(provide sweet/base sweet-read sweet-version %sweet-arm! %sweet-repl-print
-  %sweet-run)
 
 ; --- The version -------------------------------------------------------------
 ; The version comes from a stamp file beside the bundle, not from this source:
@@ -64,17 +63,17 @@
 ; Arming is an explicit call, not a load side effect: registering a reader type
 ; changes how every subsequent character is tokenized, so a harness can import
 ; the grouping logic without the reader arming underneath it.
-(def %sweet-arm!
+(def sweet-arm!
   (fn (_)
-    (%sweet-curly-register!)
-    (%sweet-ws-register!)
-    (%sweet-ws-reset!)
+    (sweet-curly-register!)
+    (sweet-ws-register!)
+    (sweet-ws-reset!)
     ()))
 
 ; --- The include seam --------------------------------------------------------
 ; Once armed, the sweet types fire on every buffer -- including the plain-x
 ; module files `include` hands to the C loader, which reads and evaluates them
-; itself with no %sweet-strip-ws on the path. A sentinel inside a multi-line
+; itself with no sweet-strip-ws on the path. A sentinel inside a multi-line
 ; form there binds a name to the sentinel string and corrupts the surrounding
 ; forms. So `include` is fronted with a wrapper that suspends both sweet types
 ; for the duration of the load; import, include-once and import-version all
@@ -92,23 +91,23 @@
     (def %sweet-include-raw include)
     (set! include
       (fn (_ path)
-        (%sweet-suspend!)
-        (guard (err (%sweet-resume!) (error err))
+        (sweet-suspend!)
+        (guard (err (sweet-resume!) (error err))
           (def %sweet-include-result (%sweet-include-raw path))
-          (%sweet-resume!)
+          (sweet-resume!)
           %sweet-include-result))))
   ())
 
 ; Install Scheme's `write` (see sweet/printer.x). A vocabulary binding, done at
 ; load, not at arm time.
-(def write %sweet-write)
+(def write sweet-write)
 
 ; --- The loop ----------------------------------------------------------------
 ; Defined before anything is armed -- a correctness requirement. Once SWEET-WS
 ; is registered it fires on every whitespace run containing a newline,
 ; including runs inside a multi-line `(...)` form that the C reader builds
 ; without knowing this type, leaving a sentinel among the elements.
-; %sweet-strip-ws cleans the forms this loop reads; nothing cleans the forms
+; sweet-strip-ws cleans the forms this loop reads; nothing cleans the forms
 ; the platform's own top-level loop reads from the same stream. In a body
 ; sequence a leaked sentinel is inert (a self-evaluating string); in an
 ; arity-sensitive form it is silent and fatal:
@@ -117,9 +116,9 @@
 ;   (if "mark" (null? %r) "mark" () "mark" (%seq ...))
 ;
 ; taking the wrong branch with no error and no output. The rule: after
-; (%sweet-arm!) the stream may contain only single-line forms, so everything
+; (sweet-arm!) the stream may contain only single-line forms, so everything
 ; structural is defined before it.
-(def %sweet-run
+(def sweet-run
   (op () %E
     (def %r (sweet-read))
     (if (null? %r)
@@ -127,4 +126,7 @@
       (%seq
         (guard (err (%seq (display "Error: ") (%seq (display err) (newline))))
           (%repl-print (eval! %r)))
-        (%sweet-run)))))
+        (sweet-run)))))
+
+(provide sweet/base
+  sweet-arm! sweet-run sweet-version (global write))

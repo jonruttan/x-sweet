@@ -25,9 +25,11 @@
 ; stops at the nearest and `error` refuses. Fixing it requires an explicit
 ; stack.
 
+(module sweet/indent)
+(import sweet/ws
+  sweet-classify sweet-column sweet-end? sweet-line-end!
+  sweet-line-ended? sweet-strip-ws sweet-ws-mark)
 (import sweet/ws)
-
-(provide sweet/indent sweet-read sweet-read-expr)
 
 (def %prim-read (prim-ref (lit io) (lit read)))
 
@@ -58,8 +60,8 @@
         (def %child (sweet-read-expr lv))
         (if (null? %child)
           (%sweet-rev acc ())
-          (if (if (%sweet-line-ended?)
-                (eq? (%sweet-classify (%sweet-column) lv) (lit same))
+          (if (if (sweet-line-ended?)
+                (eq? (sweet-classify (sweet-column) lv) (lit same))
                 #f)
             (self (pair %child acc))
             (%sweet-rev (pair %child acc) ())))))
@@ -70,11 +72,11 @@
     (def %go
       (fn (self acc)
         (def %t (%prim-read))
-        (if (%sweet-end? %t)
+        (if (sweet-end? %t)
           ; End of input.  The caller must be able to tell this from a line
           ; end, or %sweet-siblings loops forever on the last line of a file.
-          (%seq (%sweet-line-end! 0) (%sw1 (%sweet-rev acc ())))
-          (if (eq? %t %sweet-ws-mark)
+          (%seq (sweet-line-end! 0) (%sw1 (%sweet-rev acc ())))
+          (if (eq? %t sweet-ws-mark)
             ; A line ended.  With nothing accumulated it was a leading, blank,
             ; or comment-only line -- keep reading rather than returning an
             ; empty form.  That single branch is the whole of why blank lines
@@ -82,21 +84,24 @@
             (if (null? acc)
               (self acc)
               ; The rules come from x/reader/indent: deeper, same, shallower.
-              (if (eq? (%sweet-classify (%sweet-column) base) (lit deeper))
+              (if (eq? (sweet-classify (sweet-column) base) (lit deeper))
                 ; Deeper: those lines are this form's children.  The flag is
                 ; left to %sweet-siblings, whose last child sets it to whatever
                 ; ended the whole group -- that is what our own caller needs.
                 (%sw1
                   (%sweet-append
                     (%sweet-rev acc ())
-                    (%sweet-siblings (%sweet-column))))
-                (%seq (%sweet-line-end! 1) (%sw1 (%sweet-rev acc ())))))
+                    (%sweet-siblings (sweet-column))))
+                (%seq (sweet-line-end! 1) (%sw1 (%sweet-rev acc ())))))
             ; An ordinary token joins this line.  STRIPPED IF IT IS A LIST: a
             ; `(...)` spanning lines was read by the C reader, which knows
             ; nothing about our whitespace type, so every run inside it left a
             ; sentinel among the elements.  See sweet/ws.x.
             (self
-              (pair (if (pair? %t) (%sweet-strip-ws %t) %t) acc))))))
+              (pair (if (pair? %t) (sweet-strip-ws %t) %t) acc))))))
     (%go ())))
 
 (def sweet-read (fn (_) (sweet-read-expr 0)))
+
+(provide sweet/indent
+  sweet-read sweet-read-expr)

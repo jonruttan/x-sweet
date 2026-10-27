@@ -82,6 +82,12 @@
 ; and the launcher do not pass through here -- x.sh cats both onto stdin, where
 ; sweet-read strips.
 ;
+; The wrapper is an operative, as the include it wraps is: it hands its
+; argument forms, unevaluated, to the wrapped include in the caller's
+; environment, so a file loads where the include stands -- at the prompt,
+; in the root -- and a module name given as the second argument still
+; reaches the loader.
+;
 ; Wrapped once, guarded like module.x's own wrapper: a second capture would
 ; make the wrapper call itself and recurse. The guard resumes before
 ; re-raising, so an error mid-load cannot leave the reader suspended.
@@ -90,10 +96,10 @@
     (prim-reg! (lit module) (lit sweet-include-wrapped) (pair () ()))
     (def %sweet-include-raw include)
     (set! include
-      (fn (_ path)
+      (op (path . expected) e
         (sweet-suspend!)
         (guard (err (sweet-resume!) (error err))
-          (def %sweet-include-result (%sweet-include-raw path))
+          (def %sweet-include-result (eval (pair %sweet-include-raw (pair path expected)) e))
           (sweet-resume!)
           %sweet-include-result))))
   ())

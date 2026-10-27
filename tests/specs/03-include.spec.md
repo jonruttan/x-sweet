@@ -21,3 +21,14 @@ y
 ```
 ---
     42
+
+## include by path
+
+### a file included at the prompt binds its names there
+
+```scheme
+include (%module-resolve-file "tests/fixtures/include-plain.x")
+include-plain-sum
+```
+---
+    42

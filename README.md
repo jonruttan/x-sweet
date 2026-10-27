@@ -28,7 +28,7 @@ in x-lang's
 
 ## Status
 
-34 specs, all green against x-lang **v0.39.1**, the release `lang.xon`
+37 specs, all green against x-lang **v0.39.1**, the release `lang.xon`
 declares. x-lang v0.7.0 or later is required (release-ref: history): `sweet/ws.x` imports
 `x/reader/indent`, which exists in no earlier release.
 

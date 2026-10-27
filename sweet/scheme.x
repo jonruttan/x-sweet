@@ -21,28 +21,18 @@
     e
     (eval (pair (lit fn) (pair (pair (lit _) formals) body)) e)))
 
-; `define`, in both its spellings. Binds globally: (base def-global) takes
-; def's top-level path unconditionally and is frame-independent. Where the
-; engine lacks it -- prim-ref answers () for a missing member -- the fallback
-; is eval! of (def name (lit value)). The (lit ...) wrap is required: eval!
-; evaluates the def form it is handed, which would evaluate the value a second
-; time; self-evaluating values hide that, a symbol value gets looked up. The
-; eval! fallback is not frame-independent -- an interposed operative frame (as
-; when `guard` shadows a late-bound name) captures the binding and discards it
-; -- which is why def-global is preferred when present. See x-lang#527.
-(def %dg-prim (prim-ref (lit base) (lit def-global)))
-(def %sweet-def-global
-  (if (null? %dg-prim)
-    (fn (_ n v) (eval! (list (lit def) n (list (lit lit) v))))
-    (fn (_ n v) (%dg-prim n v))))
+; `define`, in both its spellings. Binds in the root: eval! evaluates there
+; whatever the frame depth (engine law 10). The (lit ...) wrap keeps def from
+; evaluating the value a second time -- a symbol value would be looked up.
+(def %sweet-def-root (fn (_ n v) (eval! (list (lit def) n (list (lit lit) v)))))
 (def define
   (op (name-or-form . body)
     e
     (if (pair? name-or-form)
-      (%sweet-def-global
+      (%sweet-def-root
         (first name-or-form)
         (eval (pair (lit lambda) (pair (rest name-or-form) body)) e))
-      (%sweet-def-global name-or-form (eval (first body) e)))))
+      (%sweet-def-root name-or-form (eval (first body) e)))))
 
 ; The rest are one-for-one renames of live x names.  They are `def`, not
 ; operatives, because they are values -- rebinding a name costs nothing and

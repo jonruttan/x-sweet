@@ -23,8 +23,7 @@
 ; --- Catalog fetches ---------------------------------------------------------
 ; ns `type`/`buf`/`io` are de-registered as ambient names (R5); consumers hold
 ; their own refs.  Fetched once at load, never per character.
-(def %make-type (prim-ref (lit type) (lit make)))
-(def %buf-last-char (prim-ref (lit buf) (lit last-char)))
+(import x/core/doors type-make buf-last-char)
 (def %prim-read (prim-ref (lit io) (lit read)))
 
 ; --- Infix to prefix ---------------------------------------------------------
@@ -91,7 +90,7 @@
 ; inside a reader callback, where a collection mid-tokenize is a hazard.
 (def %curly-read
   (fn (_ . args)
-    (if (= (%buf-last-char (first args)) #\})
+    (if (= (buf-last-char (first args)) #\})
       %curly-close
       (do
         (def %go
@@ -123,7 +122,7 @@
   (fn (_ buffer . rest)
     (if (< 0 (first sweet-sus))
       ()
-      (if (if (= (%buf-last-char buffer) #\{) #t (= (%buf-last-char buffer) #\}))
+      (if (if (= (buf-last-char buffer) #\{) #t (= (buf-last-char buffer) #\}))
         (%seq (%buffer-unread buffer) buffer)
         ()))))
 
@@ -131,7 +130,7 @@
 ; only wants %infix->prefix can import this without arming the reader.
 (def sweet-curly-register!
   (fn (_)
-    (%make-type
+    (type-make
       "SWEET-CURLY"
       (list
         (pair (lit analyse) %curly-analyse)

@@ -29,7 +29,7 @@
 ;   allocates nothing either way.
 
 (module sweet/ws)
-(def %make-type (prim-ref (lit type) (lit make)))
+(import x/core/doors type-make obj-same?)
 
 ; Column arithmetic comes from x/reader/indent, shared with Logo and anything
 ; after: a tab advances to the next multiple of 8, not +8, which differs once a
@@ -105,10 +105,9 @@
 ; the EOF sentinel through answers %token-eof.  Nil is also what a literal
 ; () reads as, so stopping at either keeps both readers below correct on
 ; both engines, and a () ends a read exactly as it did before.
-(def %sweet-same? (prim-ref (lit obj) (lit same?)))
 (def sweet-end?
   (fn (_ x)
-    (if (null? x) #t (%sweet-same? x %token-eof))))
+    (if (null? x) #t (obj-same? x %token-eof))))
 
 ; Recursive, because a mark can land at any depth: (a (b\n c)) puts one in the
 ; inner list.  Improper tails are preserved -- a personality whose reader
@@ -183,7 +182,7 @@
 
 (def sweet-ws-register!
   (fn (_)
-    (%make-type
+    (type-make
       "SWEET-WS"
       (list
         (pair (lit analyse) %ws-analyse)

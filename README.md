@@ -29,8 +29,18 @@ in x-lang's
 ## Status
 
 38 specs, all green against x-lang **v0.44.0**, the release `lang.xon`
-declares. x-lang v0.7.0 or later is required (release-ref: history): `sweet/ws.x` imports
-`x/reader/indent`, which exists in no earlier release.
+declares.
+
+Of SRFI-110, indentation grouping and the single-item rule are implemented.
+The `\\` group marker, the `$` sublist, `<*` `*>` collecting lists and `!`
+indentation are not. A line that dedents to a column no enclosing level
+sits at closes every level.
+
+The vocabulary under `-l sweet` is x-lang's, with six Scheme names added
+for the specs: `lambda`, `define`, `car`, `cdr`, `cons` and `else`.
+
+This README describes `main`. `releases/latest` installs v0.1.6, which is
+older and pairs with an earlier x-lang release.
 
 ## Install
 
@@ -84,8 +94,8 @@ verifies it against a digest before unpacking. In the project's
 
 ```x
 (lang "sweet")
-(release "v0.1.5")
-(bundle "sha256:…" "https://github.com/jonruttan/x-sweet/releases/download/v0.1.5/x-sweet-v0.1.5.tar.gz")
+(release "v0.1.6")
+(bundle "sha256:…" "https://github.com/jonruttan/x-sweet/releases/download/v0.1.6/x-sweet-v0.1.6.tar.gz")
 (source "https://github.com/jonruttan/x-sweet.git")
 ```
 
@@ -94,7 +104,7 @@ Each release's notes carry this block with its digest, ready to paste. Then:
 ```x-repl
 > (import x/tool/pin)
 > (Pin bundle "deps/langs")
-"deps/langs/sweet-v0.1.5"
+"deps/langs/sweet-v0.1.6"
 ```
 
 `deps/langs/` is where `x -l` looks in a checkout; `X_LANG_DIR` overrides it.
@@ -152,8 +162,10 @@ sweet/ws.x          the whitespace token both SRFIs build on
 sweet/curly.x       SRFI-105
 sweet/indent.x      SRFI-110
 sweet/printer.x     Scheme-style `write`
-sweet/scheme.x      the eight Scheme bindings the specs need (placeholder)
+sweet/scheme.x      the six Scheme bindings the specs need
 sweet/base.x        assembles the parts; the loop and the include seam
+tests/              markdown specs, run by the platform's runner
+tools/bundle.sh     rolls a release tarball and prints its pin
 ```
 
 ## Background

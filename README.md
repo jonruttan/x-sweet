@@ -39,9 +39,6 @@ sits at closes every level.
 The vocabulary under `-l sweet` is x-lang's, with six Scheme names added
 for the specs: `lambda`, `define`, `car`, `cdr`, `cons` and `else`.
 
-This README describes `main`. `releases/latest` installs v0.1.6, which is
-older and pairs with an earlier x-lang release.
-
 ## Install
 
 From any directory, nothing cloned:
@@ -94,8 +91,8 @@ verifies it against a digest before unpacking. In the project's
 
 ```x
 (lang "sweet")
-(release "v0.1.6")
-(bundle "sha256:…" "https://github.com/jonruttan/x-sweet/releases/download/v0.1.6/x-sweet-v0.1.6.tar.gz")
+(release "v0.1.7")
+(bundle "sha256:…" "https://github.com/jonruttan/x-sweet/releases/download/v0.1.7/x-sweet-v0.1.7.tar.gz")
 (source "https://github.com/jonruttan/x-sweet.git")
 ```
 
@@ -104,7 +101,7 @@ Each release's notes carry this block with its digest, ready to paste. Then:
 ```x-repl
 > (import x/tool/pin)
 > (Pin bundle "deps/langs")
-"deps/langs/sweet-v0.1.6"
+"deps/langs/sweet-v0.1.7"
 ```
 
 `deps/langs/` is where `x -l` looks in a checkout; `X_LANG_DIR` overrides it.

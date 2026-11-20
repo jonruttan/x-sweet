@@ -168,6 +168,41 @@ x
 ---
     10
 
+### a line after a blank line starts a form of its own
+
+```scheme
+define %sweet-bl 1
+
+list %sweet-bl 2
+```
+---
+    (1 2)
+
+### and after several, and after a line of blanks alone
+
+```scheme
+define %sweet-bm 3
+
+
+list %sweet-bm 4
+   
+list %sweet-bm 5
+```
+---
+    (3 5)
+
+### a blank line inside an indented body does not end it
+
+```scheme
+define %sweet-bn
+  list 6
+
+    7
+%sweet-bn
+```
+---
+    (6 7)
+
 ## indentation comments
 
 ### comment line is transparent
@@ -180,4 +215,34 @@ x
 ```
 ---
     42
+
+### a comment after a line's items leaves the line end where it is
+
+```scheme
+define %sweet-ca 1 ; one
+list %sweet-ca 2   ; a list
+```
+---
+    (1 2)
+
+### a comment line at the margin does not end an indented body
+
+```scheme
+define %sweet-cb
+; at the margin
+  list 8 9
+%sweet-cb
+```
+---
+    (8 9)
+
+### a comment inside parentheses and inside braces is dropped
+
+```scheme
+(list 1 ; one
+      {2 + ; two
+       3})
+```
+---
+    (1 5)
 

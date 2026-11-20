@@ -46,6 +46,7 @@
 ; GC root.
 (def %nl (list 0))    ; a newline has been seen in this run
 (def %lv (list 0))    ; column of the line the run ends on
+(def %cm (list 0))    ; the run is inside a `;` comment
 ; Whether the last sweet-read-expr STOPPED at a line end rather than at EOF.
 ; Written by the grouping layer, never by the reader -- see below.
 (def %wsf (list 0))
@@ -73,6 +74,7 @@
   (fn (_)
     (%set-first! %nl 0)
     (%set-first! %lv 0)
+    (%set-first! %cm 0)
     (%set-first! %wsf 0)
     ()))
 
@@ -124,21 +126,40 @@
 
 ; --- The analyser ------------------------------------------------------------
 ; State 2: the loop, once per character until the run ends. A newline resets
-; the column and marks that we are measuring indent; a second newline is a
-; blank line and ends the run at once (without that an interactive session
-; blocks waiting for input). Spaces and tabs count only after a newline --
-; leading whitespace on the first line is not indentation. Any other character
-; ends the run, but only if a newline was seen: a space-only run between two
-; tokens on one line is not a grouping signal, so it rejects and the platform's
-; own whitespace type takes the token.
+; the column and marks that we are measuring indent. Spaces and tabs count
+; only after a newline -- leading whitespace on the first line is not
+; indentation. Any other character ends the run, but only if a newline was
+; seen: a space-only run between two tokens on one line is not a grouping
+; signal, so it rejects and the platform's own whitespace type takes the
+; token.
+;
+; The run is the whole of what lies between two lines' tokens: blank lines
+; and `;` comments are part of it. The engine scores every type on the same
+; characters and the longest wins, a tie going to its own types. Its
+; whitespace type takes every blank line and its comment type takes a
+; comment with the newline that ends it, so a run that stopped short of
+; either lost the token, and the line end with it: the next line joined the
+; one before.
+;
+; A second newline scores the run as it stands and reads on. Where the text
+; goes on, the score at the character that ends the run replaces it; where
+; the text ends there, as a blank line entered at a prompt does, the engine
+; takes the scored run, and a form waiting on that line end is read.
 (def %ws-loop ())
 (set! %ws-loop
   (fn (_ buffer score chr)
     (match
       ((= chr #\newline)
-        (if (= (first %nl) 0)
-          (%seq (%set-first! %nl 1) (%seq (%set-first! %lv 0) %ws-loop))
-          (%seq (%set-first! %lv 0) (%score-set score 1 buffer))))
+        (%seq
+          (%set-first! %cm 0)
+          (%seq
+            (if (= (first %nl) 0) () (%score-set score 1 buffer))
+            (%seq (%set-first! %nl 1) (%seq (%set-first! %lv 0) %ws-loop)))))
+      ; Inside a comment every character but the newline is the comment's.
+      ((= (first %cm) 1) %ws-loop)
+      ; 59 is `;`, written as its byte: the engine's comment type delimits
+      ; at the character wherever it stands.
+      ((= chr 59) (%seq (%set-first! %cm 1) %ws-loop))
       ; Space and tab share a branch; %sweet-advance applies the column width.
       ((if (= chr #\space) #t (= chr #\tab))
         (%seq
@@ -150,8 +171,8 @@
       ((= (first %nl) 0) ())
       (#t (%score-set score 1 buffer))))))
 
-; State 1: the entry.  The first character must be whitespace or this is not
-; our token at all.  Suspended (an include is loading a plain-x file), it
+; State 1: the entry.  The first character must be whitespace, or the `;`
+; of a comment, or this is not our token at all.  Suspended (an include is loading a plain-x file), it
 ; rejects unconditionally and the platform's whitespace type takes the run;
 ; only the entry needs the check, because suspension can only change between
 ; tokens -- include runs during eval, never mid-tokenize.
@@ -163,12 +184,15 @@
             ((= chr #\space) #t)   ((= chr #\tab) #t)
             ((= chr #\newline) #t) ((= chr #\return) #t)
             ((= chr 11) #t)        ((= chr 12) #t)
+            ((= chr 59) #t)
             (#t #f))
         (%seq
-          (if (= chr #\newline)
-            (%seq (%set-first! %nl 1) (%set-first! %lv 0))
-            (%set-first! %nl 0))
-          %ws-loop)
+          (%set-first! %cm (if (= chr 59) 1 0))
+          (%seq
+            (if (= chr #\newline)
+              (%seq (%set-first! %nl 1) (%set-first! %lv 0))
+              (%set-first! %nl 0))
+            %ws-loop))
         ()))))
 
 ; Scored inclusive, which wins the tie: %score-set scores the buffer as it

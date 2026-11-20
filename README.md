@@ -28,7 +28,7 @@ in x-lang's
 
 ## Status
 
-38 specs, all green against x-lang **v0.59.0**, the release `lang.xon`
+44 specs, all green against x-lang **v0.59.0**, the release `lang.xon`
 declares.
 
 Of SRFI-110, indentation grouping and the single-item rule are implemented.

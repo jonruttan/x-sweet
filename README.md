@@ -126,7 +126,12 @@ Run the specs against an x-lang checkout or install:
 ```bash
 X=/path/to/x-lang/x.sh make test   # the suite
 make bundle                        # roll a release tarball and print its pin
+make card                          # docs/card.md: its format, and every program run
 ```
+
+[docs/card.md](docs/card.md) is the reference page: what each curly form
+and each indentation rule reads as, in tables, and programs that are run,
+each form beside its value.
 
 Pass `X` explicitly: without it the suite takes the `x` on your PATH, and an
 installed x that trails the checkout reports failures the platform has already
